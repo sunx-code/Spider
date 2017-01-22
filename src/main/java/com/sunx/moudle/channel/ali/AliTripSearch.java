@@ -15,6 +15,8 @@ import com.sunx.downloader.Downloader;
 import com.sunx.downloader.HttpClientDownloader;
 import com.sunx.downloader.Request;
 import com.sunx.downloader.Site;
+import com.sunx.moudle.proxy.IProxy;
+import com.sunx.moudle.proxy.ProxyManager;
 import com.sunx.storage.DBFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,27 +75,51 @@ public class AliTripSearch implements IMonitor {
      * @param pageNum
      */
     private void get(String word, int pageNum, DBFactory factory, long id, String name) {
-        try {
+        try{
             //拼接链接
-            String link = SEARCH_URL.replaceAll("KEY_WORD", word).replaceAll("PAGE_NUM", "" + pageNum);
+            String link = SEARCH_URL.replaceAll("KEY_WORD",word).replaceAll("PAGE_NUM","" + pageNum);
             logger.info("当前处理第" + pageNum + "页数据,链接地址为:" + link);
-            //请求结果数据
-            String src = downloader.downloader(request.setUrl(link), site);
-            if (src == null || src.length() <= 0) {
+            IProxy proxy = null;
+            String page = null;
+            int i = 0;
+            while(true){
+                try{
+                    if(i > 10)break;
+                    proxy = ProxyManager.me().poll();
+                    if(proxy == null){
+                        Thread.sleep(500);
+                        continue;
+                    }
+                    //请求结果数据
+                    page = downloader.downloader(request.setUrl(link),site,proxy.getHost(),proxy.getPort());
+                    if(page == null || page.contains("https://sec.taobao.com/query.htm")){
+                        logger.error("下载数据异常,对应的链接地址为:" + link);
+                        Thread.sleep(3000);
+                        i++;
+                        continue;
+                    }
+                    break;
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+            if(page == null || page.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + link);
                 return;
             }
             //开始解析数据,将数据封装为json
+            String src = page.replaceAll("jsonp\\(","");
+            src = src.substring(0,src.length() - 1);
             JSONObject bean = JSON.parseObject(src);
-            dealJSON(bean, factory, id, name);
-            try {
+            dealJSON(bean,factory,id,name);
+            try{
                 Thread.sleep(1500);
                 //处理下一页数据
-                dealNext(bean, word, factory, id, name);
-            } catch (Exception e) {
+                dealNext(bean,word,factory,id,name);
+            }catch (Exception e){
                 e.printStackTrace();
             }
-        } catch (Exception e) {
+        }catch (Exception e){
             e.printStackTrace();
         }
     }

@@ -6,6 +6,7 @@ import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
 import com.sunx.moudle.channel.Wait;
+import com.sunx.moudle.dynamic.DriverManager;
 import com.sunx.moudle.enums.ImageType;
 import com.sunx.utils.FileUtil;
 import com.sunx.utils.TimerUtils;
@@ -45,6 +46,8 @@ public class AliTripSearchExecutableItem implements IParser {
         String max = fs.format(new Date(System.currentTimeMillis() + 86400l * 31 * 1000));
         logger.info("max:" + max);
         try {
+            //使用代理
+            DriverManager.me().useProxy(driver);
             //开始抓取链接,记录日志...
             logger.info("开始抓取数据,对应的链接地址为:" + task.getUrl() + "....");
             driver.get(task.getUrl());
@@ -124,6 +127,9 @@ public class AliTripSearchExecutableItem implements IParser {
         } catch (Exception e) {
             e.printStackTrace();
             return Constant.TASK_FAIL;
+        }finally{
+            //使用代理
+            DriverManager.me().removeProxy(driver);
         }
     }
 

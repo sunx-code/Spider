@@ -1,5 +1,6 @@
 package com.sunx.utils;
 
+import com.sunx.constant.Configuration;
 import com.sunx.constant.Constant;
 import com.sunx.moudle.enums.ImageType;
 import org.openqa.selenium.OutputType;
@@ -20,7 +21,7 @@ public class FileUtil {
      * @return
      */
 	public static String createPageFile(String vday, String channel, String region,String checkInDate, String md5, ImageType imageType) {
-		File parent_path = new File(Constant.DEFAULT_IMG_SAVE + File.separator
+		File parent_path = new File(Configuration.me().getString(Constant.DEFAULT_IMG_SAVE) + File.separator
 				+ vday + File.separator + channel + File.separator + region);
 		if (!parent_path.exists())
 			parent_path.mkdirs();

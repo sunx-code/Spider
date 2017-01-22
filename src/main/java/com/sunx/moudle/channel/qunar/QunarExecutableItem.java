@@ -6,6 +6,7 @@ import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
 import com.sunx.moudle.channel.Wait;
+import com.sunx.moudle.dynamic.DriverManager;
 import com.sunx.moudle.enums.ImageType;
 import com.sunx.utils.FileUtil;
 import com.sunx.common.encrypt.MD5;
@@ -40,6 +41,8 @@ public class QunarExecutableItem implements IParser {
     public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
         try{
             logger.info("开始处理数据:" + task.getUrl());
+            //使用代理
+            DriverManager.me().useProxy(pageDriver);
             pageDriver.get(task.getUrl());
             Wait.wait(pageDriver, 3, 60, () -> {
                 List<WebElement> findElements = pageDriver.findElements(By.className("b_loading"));
@@ -112,6 +115,9 @@ public class QunarExecutableItem implements IParser {
         }catch (Exception e){
             e.printStackTrace();
             logger.error(e.getMessage());
+        }finally{
+            //使用代理
+            DriverManager.me().removeProxy(pageDriver);
         }
         return Constant.TASK_FAIL;
     }
