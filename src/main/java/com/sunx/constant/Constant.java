@@ -1,5 +1,7 @@
 package com.sunx.constant;
 
+import java.net.InetAddress;
+
 /**
  * 常量类
  */
@@ -35,5 +37,11 @@ public class Constant {
 
     public static final String DEFALUT_REGION = "Unknow";
 
-    public static final int DEFAULT_TIME_OUT = 6000;
+    public static final int DEFAULT_TIME_OUT = 10000;
+
+    public static final String TEMPLATE_FILE_LIST_PATH = "conf/template";
+
+
+    public static final String DEFAULT_ENCODING = "UTF-8";
+
 }

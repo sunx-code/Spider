@@ -35,8 +35,6 @@ public class Monitor {
      * @param args
      */
     public static void main(String[] args) {
-        //初始化日志处理
-//        PropertyConfigurator.configure(System.getProperty("user.dir") + File.separator + Constant.LO4J_CONFIG_PATH);
         //初始化数据库连接池
         DBConfig config = new DBConfig(Constant.DB_CONFIG_FILE);
         DuridPool.me().build(config);

@@ -74,13 +74,13 @@ public class ClubMedExecutableItem implements IParser {
                 e.printStackTrace();
             }
             //模拟点击查看更多房型
-            try{
-                WebElement ele = pageDriver.findElement(By.cssSelector("#js-AllaccommodationsResults"));
-                ele.click();
-                Wait.wait(pageDriver,5,3,() -> true);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
+//            try{
+//                WebElement ele = pageDriver.findElement(By.cssSelector("#js-AllaccommodationsResults"));
+//                ele.click();
+//                Wait.wait(pageDriver,5,3,() -> true);
+//            }catch (Exception e){
+//                e.printStackTrace();
+//            }
 
             // ===================================
             Date date = new Date();

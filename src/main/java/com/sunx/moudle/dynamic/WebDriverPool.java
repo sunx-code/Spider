@@ -21,7 +21,7 @@ public class WebDriverPool {
      * @return
      */
     public static WebDriverPool me(){
-        return SingleClass.driverPool;
+        return new WebDriverPool();
     }
 
     /**
@@ -41,8 +41,8 @@ public class WebDriverPool {
 		GenericObjectPoolConfig config = new GenericObjectPoolConfig();
         config.setMaxTotal(Constant.WEB_DRIVER_NUM); //整个池最大值
         config.setMaxWaitMillis(1000); //获取不到永远不等待
-        config.setTimeBetweenEvictionRunsMillis(5 * 60*1000L); //-1不启动。默认1min一次
-        config.setMinEvictableIdleTimeMillis(10 * 60000L); //可发呆的时间,10mins
+        config.setTimeBetweenEvictionRunsMillis(5 * 60 * 1000L);
+        config.setMinEvictableIdleTimeMillis(10 * 6000L);
         GenericObjectPool<WebDriver>  pool = new GenericObjectPool<>(factory, config);
 		return pool;
 	}
@@ -81,8 +81,13 @@ public class WebDriverPool {
 
     public static void main(String[] args){
         WebDriver driver = WebDriverPool.me().get();
-        System.out.println(driver);
+        driver.get("http://news.baidu.com");
+        System.out.println(driver.getPageSource());
 
         WebDriverPool.me().recycle(driver);
+
+        driver = WebDriverPool.me().get();
+        driver.get("http://news.baidu.com");
+        System.out.println(driver.getPageSource());
     }
 }

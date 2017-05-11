@@ -38,8 +38,13 @@ public class CTripExecutableItem implements IParser {
      */
     public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
         try{
-            pageDriver.get(task.getUrl());
-            Wait.wait(pageDriver, 5, 4, () -> true);
+            //开始下载酒店首页
+
+
+            //抽取出对应的数据内容
+
+
+            //
 
             //判断是否需要进行店家展开更多房型
             String source = pageDriver.getPageSource();

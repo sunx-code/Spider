@@ -1,7 +1,11 @@
 package com.sunx.entity;
 
+import com.sunx.common.ip.IPFinder;
+import com.sunx.constant.Configuration;
 import com.sunx.storage.annotation.Row;
 import com.sunx.storage.annotation.Table;
+
+import java.net.InetAddress;
 
 /**
  * 结果存储对象
@@ -139,6 +143,8 @@ public class ResultEntity {
     }
 
     public void setPath(String path) {
+        path = path.replaceAll(Configuration.me().getString("img.save.path"),
+                "http://" + Configuration.me().host() + ":" + Configuration.me().getString("web.port"));
         this.path = path;
     }
 

@@ -21,4 +21,30 @@ public class Helper {
         }
         return null;
     }
+
+    /**
+     * 清洗字符串
+     * @param str
+     * @param child
+     * @param replace
+     * @return
+     */
+    public static String clean(String str,String child,String replace){
+        if(str == null)return null;
+        return str.replaceAll(child,replace);
+    }
+
+    /**
+     * 转成int
+     * @param str
+     * @return
+     */
+    public static int toInt(String str){
+        try{
+            return Integer.parseInt(str);
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        return -1;
+    }
 }

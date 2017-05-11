@@ -14,7 +14,7 @@ import java.util.*;
  */
 public class WowoYooSearch implements IMonitor {
     //链接地址
-    private String SEARCH_URL = "https://wowoyoo.com/clubmed/";
+    private String SEARCH_URL = "https://wowoyoo.com/clubmed/cau";
     //格式化日期
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
     //格式化日期数据
@@ -30,7 +30,7 @@ public class WowoYooSearch implements IMonitor {
         Map<String, String> regions = new HashMap<String, String>();
         regions.put("三亚", "sanya");
         regions.put("桂林", "guilin");
-        regions.put("东澳岛", "dongao");
+        regions.put("东澳度假村", "dongao");
         regions.put("北大壶", "beidahu");
         regions.put("亚布力", "yabuli");
         regions.put("石垣岛", "kabira");
@@ -46,7 +46,7 @@ public class WowoYooSearch implements IMonitor {
 
         // =====================================================
         List<String> days = TimerUtils.initDay(sdf, Constant.CRAWLING_RANGE_DAYS);
-        String birthday = TimerUtils.birthday(sdf,6);
+        String birthday = TimerUtils.birthday(sdf,10);
         int[] sleepdays = Constant.CRAWLING_SLEEP_DAYS;
         int[] number_of_adult = Constant.NUMBER_OF_ADULT;
         int[] number_of_children = Constant.NUMBER_OF_CHILDREN;
@@ -81,7 +81,7 @@ public class WowoYooSearch implements IMonitor {
                             taskEntity.setAdultNum(adult_num);
                             taskEntity.setChannelId(id);
                             taskEntity.setChannelName(name);
-                            taskEntity.setCheckInDate(checkInDate.replaceAll("-",""));
+                            taskEntity.setCheckInDate(checkInDate);
                             taskEntity.setChildNum(children_num);
                             taskEntity.setCreateAt(fs.format(new Date()));
                             taskEntity.setPeopleType(type);
@@ -89,7 +89,7 @@ public class WowoYooSearch implements IMonitor {
                             taskEntity.setRegionParam(regionParam);
                             taskEntity.setSleep(sleepDay);
                             taskEntity.setTryTime(0);
-                            taskEntity.setUrl(SEARCH_URL + regionParam);
+                            taskEntity.setUrl(SEARCH_URL);
                             taskEntity.setBirthday(birthday);
                             taskEntity.setStatus(Constant.TASK_NEW);
 

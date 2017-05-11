@@ -17,6 +17,7 @@ import com.sunx.downloader.Request;
 import com.sunx.downloader.Site;
 import com.sunx.moudle.proxy.IProxy;
 import com.sunx.moudle.proxy.ProxyManager;
+import com.sunx.parser.Page;
 import com.sunx.storage.DBFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,7 @@ public class AliTripSearch implements IMonitor {
     //关键字
     private String[] keys = new String[]{"clubmed", "club%20med"};
     //请求集合
-    private String SEARCH_URL = "https://s.alitrip.com/vacation/list.htm?cq=全国&mq=KEY_WORD&jumpTo=PAGE_NUM&itemOrderEnum=DEFAULT&orderDirEnum=DESC&searchConditions=&playType=0&_input_charset=utf8&format=json";
+    private String SEARCH_URL = "https://s.fliggy.com/vacation/list.htm?cq=全国&mq=KEY_WORD&jumpTo=PAGE_NUM&itemOrderEnum=DEFAULT&orderDirEnum=DESC&searchConditions=&playType=0&_input_charset=utf8";
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -48,10 +49,11 @@ public class AliTripSearch implements IMonitor {
      * @param name    渠道名称
      */
     public void monitor(DBFactory factory, Long id, String name) {
-        site.addHeader("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        site.addHeader("accept-encoding", "gzip, deflate, sdch, br");
-        site.addHeader("accept-language", "zh-CN,zh;q=0.8");
-        site.addHeader("user-agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36");
+        //设置请求头
+        site.addHeader("accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        site.addHeader("accept-encoding","gzip, deflate, sdch, br");
+        site.addHeader("accept-language","zh-CN,zh;q=0.8");
+        site.addHeader("user-agent","Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36");
 
         //循环遍历数据,将其中的关键字取出来,进行遍历抽取结果数据
         for (String word : keys) {
@@ -80,19 +82,22 @@ public class AliTripSearch implements IMonitor {
             String link = SEARCH_URL.replaceAll("KEY_WORD",word).replaceAll("PAGE_NUM","" + pageNum);
             logger.info("当前处理第" + pageNum + "页数据,链接地址为:" + link);
             IProxy proxy = null;
-            String page = null;
+            String src = null;
             int i = 0;
             while(true){
                 try{
-                    if(i > 10)break;
                     proxy = ProxyManager.me().poll();
-                    if(proxy == null){
-                        Thread.sleep(500);
+                    if(proxy == null && i <= 3){
+                        Thread.sleep(100);
+                        i++;
                         continue;
                     }
+                    if(i > 3){
+                        proxy = new IProxy();
+                    }
                     //请求结果数据
-                    page = downloader.downloader(request.setUrl(link),site,proxy.getHost(),proxy.getPort());
-                    if(page == null || page.contains("https://sec.taobao.com/query.htm")){
+                    src = downloader.downloader(request.setUrl(link),site,proxy.getHost(),proxy.getPort());
+                    if(src == null || src.contains("https://sec.taobao.com/query.htm")){
                         logger.error("下载数据异常,对应的链接地址为:" + link);
                         Thread.sleep(3000);
                         i++;
@@ -103,14 +108,14 @@ public class AliTripSearch implements IMonitor {
                     e.printStackTrace();
                 }
             }
-            if(page == null || page.length() <= 0){
+            if(src == null || src.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + link);
                 return;
             }
             //开始解析数据,将数据封装为json
-            String src = page.replaceAll("jsonp\\(","");
-            src = src.substring(0,src.length() - 1);
-            JSONObject bean = JSON.parseObject(src);
+            Page page = Page.me().bind(src);
+            String data = page.css("#J_TravelseResult","value");
+            JSONObject bean = JSON.parseObject(data);
             dealJSON(bean,factory,id,name);
             try{
                 Thread.sleep(1500);

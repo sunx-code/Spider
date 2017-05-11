@@ -1,6 +1,5 @@
 package com.sunx.moudle.proxy;
 
-import com.sunx.constant.Configuration;
 import com.sunx.downloader.Downloader;
 import com.sunx.downloader.HttpClientDownloader;
 import com.sunx.downloader.Request;
@@ -14,15 +13,17 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  */
 public class ProxyManager {
-    private String BASE = "http://dps.kuaidaili.com/api/getdps/?orderid=ORDER_NUM&num=100&ut=1&sep=1";
+    private String BASE = "http://www.xdaili.cn/ipagent/privateProxy/applyStaticProxy?count=1&spiderId=9802f3a8f7134573b5d2dc0c6ed1c83d&returnType=1";
     private ConcurrentLinkedQueue<IProxy> queue = new ConcurrentLinkedQueue<IProxy>();
     private int DEFAULT_PROXY_TASK_DURATION = 1000 * 10;
     private Downloader downloader = new HttpClientDownloader();
     private Request request = new Request();
     private Site site = new Site();
 
-    private static int MAX_SIZE = 1000;
+    private static int MAX_SIZE = 20;
+    private static int MIN_SIZE = 10;
     /**
+     *
      */
     private static class SingleClass{
         private static ProxyManager manager = new ProxyManager();
@@ -35,6 +36,8 @@ public class ProxyManager {
     /**
      */
     private ProxyManager(){
+        request.setUrl(BASE);
+
         ProxyTask task = new ProxyTask();
         Timer timer = new Timer();
         timer.schedule(task,0,DEFAULT_PROXY_TASK_DURATION);
@@ -51,6 +54,7 @@ public class ProxyManager {
      * @param proxy
      */
     public void offer(IProxy proxy){
+        if(proxy == null)return;
         this.queue.offer(proxy);
     }
 
@@ -78,8 +82,8 @@ public class ProxyManager {
 
                 if(this.queue.size() <= MAX_SIZE){
                     this.queue.offer(proxy);
-                }else{
-                    //移除最早入队的数据
+                } else{
+//                    移除最早入队的数据
                     this.queue.poll();
                     offer(proxy);
                 }
@@ -93,12 +97,10 @@ public class ProxyManager {
     /**
      */
     private class ProxyTask extends TimerTask{
-        public ProxyTask(){
-            request.setUrl(BASE.replaceAll("ORDER_NUM",Configuration.me().getString("proxy.order.num")));
-        }
         @Override
         public void run() {
             try{
+                if(queue.size() > MIN_SIZE)return;
                 String src = downloader.downloader(request,site);
                 if(src == null || src.length() <= 0)return;
                 deal(src);

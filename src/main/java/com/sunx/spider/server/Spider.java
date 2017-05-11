@@ -43,12 +43,16 @@ public class Spider {
     private int QUEUE_MIN_SIZE = 100;
     //缓存数据添加时间间隔
     private int QUEUE_ADD_DURATION = 10000;
+    //最小时间间隔
+    private int MAX_DURATION = 1000;
     //启动线程数
     private int THREAD_SIZE = 1;
     //线程锁
     private Lock lock = new ReentrantLock();
     //基础类包
     private Map<Long,Class> clMap = new HashMap<>();
+    //渠道采集频率
+    private Map<Long,Long> durations = new HashMap<>();
 
     /**
      * main函数
@@ -56,8 +60,6 @@ public class Spider {
      * @param args
      */
     public static void main(String[] args){
-        //初始化日志处理
-//        PropertyConfigurator.configure(System.getProperty("user.dir") + File.separator + Constant.LO4J_CONFIG_PATH);
         //初始化数据库连接池
         DBConfig config = new DBConfig(Constant.DB_CONFIG_FILE);
         DuridPool.me().build(config);
@@ -65,6 +67,7 @@ public class Spider {
         //启动爬虫
         Spider.me()
               .bind(DBFactory.me())
+              .num()
               .queue()
               .scan()
               .start();
@@ -85,6 +88,18 @@ public class Spider {
      */
     public Spider bind(DBFactory factory){
         this.factory = factory;
+        return this;
+    }
+
+    /**
+     * 设置线程数
+     * @return
+     */
+    public Spider num(){
+        int num = Configuration.me().getInt("thread.num");
+        if(num > 0){
+            THREAD_SIZE = num;
+        }
         return this;
     }
 
@@ -281,6 +296,11 @@ public class Spider {
                         Thread.sleep(3000);
                         continue;
                     }
+                    long sleep = sleepTime(task);
+                    if(sleep > 0){
+                        System.out.println("现场休眠" + sleep + "ms后继续....");
+                        Thread.sleep(sleep);
+                    }
                     //开始处理数据
                     if(!clMap.containsKey(task.getChannelId())){
                         throw new Exception("当前渠道没有对应的解析类,渠道对应的id为:" + task.getChannelId() + ",任务名称为:" + task.getId());
@@ -289,12 +309,6 @@ public class Spider {
                     Class clzz = clMap.get(task.getChannelId());
                     //获取指定方法
                     Method method = clzz.getMethod("parser",DBFactory.class,RemoteWebDriver.class,TaskEntity.class);
-                    driver = (RemoteWebDriver)WebDriverPool.me().get();
-                    if(driver == null){
-                        logger.info("获取驱动对象失败......");
-                        Thread.sleep(3000);
-                        continue;
-                    }
                     //开始执行数据处理
                     Integer status = (Integer)method.invoke(clzz.newInstance(),factory,driver,task);
                     //更新任务为成功状态
@@ -303,6 +317,9 @@ public class Spider {
                             new Object[]{status},
                             new String[]{"id"},
                             new Object[]{task.getId()});
+                    //现场休眠
+                    Thread.sleep(2000);
+                    System.out.println("现场休眠1.5s后继续....");
                 }catch (Exception e){
                     e.printStackTrace();
                     logger.error(e.getMessage());
@@ -325,6 +342,22 @@ public class Spider {
                     }
                 }
             }
+        }
+    }
+
+    public long sleepTime(TaskEntity task){
+        try{
+            lock.lock();
+            //判定该站点是否需要休眠处理数据
+            if(!durations.containsKey(task.getChannelId())){
+                durations.put(task.getChannelId(),0l);
+            }
+            long sleep = MAX_DURATION - (System.currentTimeMillis() - durations.get(task.getChannelId()));
+            durations.put(task.getChannelId(), System.currentTimeMillis());
+
+            return sleep;
+        }finally{
+            lock.unlock();
         }
     }
 

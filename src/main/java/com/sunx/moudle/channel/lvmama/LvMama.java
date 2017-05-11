@@ -22,7 +22,7 @@ import java.util.Date;
  */
 public class LvMama implements IMonitor {
     //关键字
-    private String[] keys = new String[]{"clubmed","club med"};
+    private String[] keys = new String[]{"club med"};
     //请求集合
     private String[] urls = new String[]{
                                         "http://s.lvmama.com/scenictour/H8?keyword=KEY_WORD#list"    //酒店 + 景点

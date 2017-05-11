@@ -4,7 +4,7 @@ package com.sunx.moudle.enums;
  * 图片类型
  */
 public enum ImageType {
-    PNG("png"), TXT("txt"), BASE64("base64"),;
+    PNG("png"), TXT("txt"), BASE64("base64"),HTML("htm");
 
     private String name;
 

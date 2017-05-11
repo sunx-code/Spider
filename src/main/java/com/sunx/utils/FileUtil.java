@@ -6,8 +6,7 @@ import com.sunx.moudle.enums.ImageType;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.remote.RemoteWebDriver;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 
 public class FileUtil {
 	/**
@@ -46,5 +45,36 @@ public class FileUtil {
      */
 	public static byte[] getScreenshot(RemoteWebDriver driver) {
 		return driver.getScreenshotAs(OutputType.BYTES);
+	}
+
+	/**
+	 * 读取文件内容
+	 * @param file
+	 * @param encoding
+	 * @return
+	 */
+	public static String readerByFile(File file,String encoding){
+		BufferedReader br = null;
+		try{
+			//读取文件内容
+			br = new BufferedReader(new InputStreamReader(new FileInputStream(file),encoding));
+			StringBuffer buffer = new StringBuffer();
+			String line = null;
+			while((line = br.readLine()) != null){
+				buffer.append(line);
+			}
+			return buffer.toString();
+		}catch (Exception e){
+			e.printStackTrace();
+		}finally{
+			try{
+				if(br!= null){
+					br.close();
+				}
+			}catch (Exception e){
+				e.printStackTrace();
+			}
+		}
+		return null;
 	}
 }

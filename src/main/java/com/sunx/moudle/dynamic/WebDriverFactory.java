@@ -53,12 +53,13 @@ public class WebDriverFactory extends BasePooledObjectFactory<WebDriver> {
 
 	@Override
 	public void passivateObject(PooledObject<WebDriver> arg1) throws Exception {
-	
+
 	}
 
 	@Override
 	public void destroyObject(PooledObject<WebDriver> p) throws Exception {
 		//销毁对象
+		p.getObject().close();
 		p.getObject().quit();
 	}
 }

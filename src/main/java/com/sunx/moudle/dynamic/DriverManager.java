@@ -25,10 +25,10 @@ public class DriverManager {
      * 使用代理
      * @param driver
      */
-    public void useProxy(RemoteWebDriver driver){
+    public IProxy useProxy(RemoteWebDriver driver){
         try{
             boolean flag = Configuration.me().getBoolean("is.use.proxy");
-            if(flag == false)return;
+            if(flag == false)return null;
             int i = 0;
             IProxy proxy = null;
             while(true){
@@ -49,9 +49,11 @@ public class DriverManager {
             if(proxy != null){
                 exec(driver,proxy.getHost(),proxy.getPort() + "",-1);
             }
+            return proxy;
         }catch (Exception e){
             e.printStackTrace();
         }
+        return null;
     }
 
     /**

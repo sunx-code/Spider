@@ -3,6 +3,7 @@ package com.sunx.constant;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.util.Properties;
 
 /**
@@ -13,6 +14,8 @@ public class Configuration {
     private Properties properties = null;
     private static final String configurationFilePath = "conf/conf.properties";
 
+    private static String HOST_NAME = null;
+
     /**
      */
     private Configuration() {
@@ -20,6 +23,9 @@ public class Configuration {
             properties = new Properties();
             InputStream is = new FileInputStream(new File(configurationFilePath));
             properties.load(is);
+
+            //构造当前电脑的hostname
+            HOST_NAME = InetAddress.getLocalHost().getHostName();
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -85,5 +91,9 @@ public class Configuration {
 
     public Object get(String key){
         return properties.get(key);
+    }
+
+    public String host(){
+        return HOST_NAME;
     }
 }
