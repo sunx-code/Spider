@@ -44,13 +44,13 @@ public class Spider {
     //缓存数据添加时间间隔
     private int QUEUE_ADD_DURATION = 10000;
     //最小时间间隔
-    private int MAX_DURATION = 1000;
+    private int MAX_DURATION = 10000;
     //启动线程数
     private int THREAD_SIZE = 1;
     //线程锁
     private Lock lock = new ReentrantLock();
     //基础类包
-    private Map<Long,Class> clMap = new HashMap<>();
+    private Map<Long,Object> clMap = new HashMap<>();
     //渠道采集频率
     private Map<Long,Long> durations = new HashMap<>();
 
@@ -243,9 +243,13 @@ public class Spider {
             //查看这个类是否加入了注解
             Service service = (Service) child.getAnnotation(Service.class);
             if(service != null){
-                clMap.put(service.id(),child);
+                try{
+                    clMap.put(service.id(),child.newInstance());
 
-                System.out.println(service.id() + " --> " + child.getCanonicalName());
+                    System.out.println(service.id() + " --> " + child.getCanonicalName());
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
             }
         }
     }
@@ -290,27 +294,23 @@ public class Spider {
                 TaskEntity task = null;
                 RemoteWebDriver driver = null;
                 try{
+                    logger.info("开始从队列中获取任务...");
                     task = get();
                     if(task == null){
                         logger.info("当前任务队列中任务为空,需要的等待...");
                         Thread.sleep(3000);
                         continue;
                     }
-                    long sleep = sleepTime(task);
-                    if(sleep > 0){
-                        System.out.println("现场休眠" + sleep + "ms后继续....");
-                        Thread.sleep(sleep);
-                    }
                     //开始处理数据
                     if(!clMap.containsKey(task.getChannelId())){
                         throw new Exception("当前渠道没有对应的解析类,渠道对应的id为:" + task.getChannelId() + ",任务名称为:" + task.getId());
                     }
                     //获取解析类
-                    Class clzz = clMap.get(task.getChannelId());
+                    Object bean = clMap.get(task.getChannelId());
                     //获取指定方法
-                    Method method = clzz.getMethod("parser",DBFactory.class,RemoteWebDriver.class,TaskEntity.class);
+                    Method method = bean.getClass().getMethod("parser",DBFactory.class,RemoteWebDriver.class,TaskEntity.class);
                     //开始执行数据处理
-                    Integer status = (Integer)method.invoke(clzz.newInstance(),factory,driver,task);
+                    Integer status = (Integer)method.invoke(bean,factory,driver,task);
                     //更新任务为成功状态
                     factory.update(Constant.DEFAULT_DB_POOL, DBUtils.table(task),
                             new String[]{"status"},
@@ -318,8 +318,8 @@ public class Spider {
                             new String[]{"id"},
                             new Object[]{task.getId()});
                     //现场休眠
-                    Thread.sleep(2000);
-                    System.out.println("现场休眠1.5s后继续....");
+//                    Thread.sleep(2000);
+//                    System.out.println("现场休眠1.5s后继续....");
                 }catch (Exception e){
                     e.printStackTrace();
                     logger.error(e.getMessage());
@@ -353,8 +353,10 @@ public class Spider {
                 durations.put(task.getChannelId(),0l);
             }
             long sleep = MAX_DURATION - (System.currentTimeMillis() - durations.get(task.getChannelId()));
-            durations.put(task.getChannelId(), System.currentTimeMillis());
 
+            System.err.println(Thread.currentThread().getName() + "\t" + sleep + "\t" + durations.get(task.getChannelId()) + "\t" + System.currentTimeMillis());
+
+            durations.put(task.getChannelId(), System.currentTimeMillis());
             return sleep;
         }finally{
             lock.unlock();
@@ -369,7 +371,14 @@ public class Spider {
         try{
             lock.lock();
             if(queue.isEmpty())return null;
-            return queue.remove(0);
+            logger.info("获取任务完成,开始处理任务...");
+            TaskEntity task = queue.remove(0);
+            long sleep = sleepTime(task);
+            if(sleep > 0){
+                System.out.println("现场休眠" + sleep + "ms后继续....");
+                Thread.sleep(sleep);
+            }
+            return task;
         }catch (Exception e){
             e.printStackTrace();
         }finally {

@@ -1,222 +1,527 @@
 //package com.fosun.fonova.moudle.channel.tuniu;
 //
-//import com.fosun.fonova.conf.Conf;
-//import com.fosun.fonova.downloader.Downloader;
-//import com.fosun.fonova.downloader.HttpClientDownloader;
-//import com.fosun.fonova.downloader.Request;
-//import com.fosun.fonova.downloader.Site;
-//import com.fosun.fonova.downloader.selector.Node;
-//import com.fosun.fonova.downloader.selector.Page;
-//import com.fosun.fonova.spider.SeedImportable;
-//import com.fosun.fonova.spider.queue.SpiderQueues;
-//import org.apache.log4j.Logger;
+//import com.alibaba.fastjson.JSON;
+//import com.alibaba.fastjson.JSONArray;
+//import com.alibaba.fastjson.JSONObject;
+//import com.sunx.downloader.Downloader;
+//import com.sunx.downloader.HttpClientDownloader;
+//import com.sunx.downloader.Request;
+//import com.sunx.downloader.Site;
+//import com.sunx.moudle.channel.IMonitor;
+//import com.sunx.moudle.channel.ali.AliHotels;
+//import com.sunx.moudle.proxy.ProxyManager;
 //
+//import org.apache.commons.lang3.exception.ExceptionUtils;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 //import java.text.SimpleDateFormat;
-//import java.util.AbstractMap;
-//import java.util.Date;
-//import java.util.HashMap;
-//import java.util.Map;
+//import java.util.*;
 //import java.util.regex.Matcher;
 //import java.util.regex.Pattern;
 //
-///**
-// *
-// */
-//public class TuNiuSearch implements SeedImportable {
+//
+///** */
+//public class TuNiuSearch implements IMonitor {
 //    //日志记录
-//    private Logger logger = Logger.getLogger(TuNiuSearch.class);
+//    private static final Logger logger = LoggerFactory.getLogger(AliHotels.class);
 //    //下载器
 //    private Downloader downloader = new HttpClientDownloader();
 //    //站点对象
 //    private Site site = new Site();
 //    //请求对象
 //    private Request request = new Request();
-//    //城市id
-//    private Map<String,String> city = new HashMap<>();
-//    //关键字
-//    private String[] words = new String[]{"club%20med","clubmed"};
-//    //国内搜索条件
-//    private String GUONEI_SEARCH_URL = "http://hotel.tuniu.com/list?city=CITY_ID&checkindate=START_DAY&checkoutdate=END_DAY&keyword=KEY_WORD";
-//    //渠道数据
-//    private AbstractMap.SimpleEntry<String,String> channel = new AbstractMap.SimpleEntry<>("途牛-酒店","TuNiuSearch");
-//    //
-//    private String DETAIL_URL = "http://hotel.tuniu.com/detail/PRO_ID?checkindate=START_DAY&checkoutdate=END_DAY";
-//    //日期格式化工具
+//
+//    //格式化日期
 //    private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-//    //
-//    private Pattern pattern = Pattern.compile("(?:detail/)(\\d+)");
-//    /**
-//     * 抽取过程
-//     * @param priority
-//     * @param spiderQueues
-//     */
-//    public void importable(int priority, SpiderQueues spiderQueues){
-//        //初始化城市数据
-//        init();
+//    //格式化日期数据
+//    private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 //
-//        //构造入住日期
-//        Map<String,Map<Integer,String>> days = initDay();
 //
-//        //循环遍历请求,进行搜索下载解析
-//        for(String word : words){
-//            String checkInDay = sdf.format(new Date());
-//            int sleep = 1;
-//            String end = sdf.format(new Date(System.currentTimeMillis() + 86400l * 1000));
-//
-//            //处理国内数据
-//            dealGuoNei(days,word, checkInDay, sleep, end, priority, spiderQueues);
-//        }
-//    }
-//
-//    /**
-//     * 处理国内的数据
-//     * @param checkInDay
-//     * @param sleep
-//     * @param end
-//     * @param priority
-//     * @param spiderQueues
-//     */
-//    public void dealGuoNei(Map<String,Map<Integer,String>> days,String word, String checkInDay, int sleep, String end, int priority, SpiderQueues spiderQueues){
-//        try{
-//            //循环遍历城市id
-//            for(Map.Entry<String,String> entry : city.entrySet()){
-//                //城市名称和id
-//                String cityName = entry.getValue();
-//                String cityId = entry.getKey();
-//
-//                //封装链接
-//                String link = GUONEI_SEARCH_URL.replaceAll("CITY_ID",cityId)
-//                                               .replaceAll("START_DAY",checkInDay)
-//                                               .replaceAll("END_DAY",end)
-//                                               .replaceAll("KEY_WORD",word);
-//
-//                //请求网页源码
-//                Page page = getPage(link);
-//                if(page == null || page.getHtml() == null){
-//                    logger.error("下载网页源码错误,对应的链接地址为:" + link);
-//                    continue;
+//        /**
+//         * 开始种子采集
+//         */
+//        public void start() {
+//            try {
+//                //用于存储结果
+//                if(flag == 1){
+//                    //处理开始数据
+//                    offer();
 //                }
-//                //开始进行解析数据
-//                parser(page,cityName,priority,spiderQueues,days);
 //
-//                //线程休眠一定时间后在进行下一个搜索的查看
+//                //开始进行调度
+//                long current = System.currentTimeMillis();
+//                long duration = period(current);
+//                start(duration,duration);
+//
+//                Thread.sleep(2000);
+//                //开始具体数据的采集
+//                logger.info("开始启动线程,进行数据采集...");
+//                for(int i=0;i<THREAD_SIZE;i++){
+//                    Exture exe = new Exture();
+//                    exe.start();
+//                }
+//            } catch (Exception e) {
+//                logger.error(ExceptionUtils.getStackTrace(e));
+//            }
+//        }
+//
+//        /**
+//         * 获取距离第二天00:30多长时间
+//         *
+//         * @param current
+//         * @return
+//         */
+//        public long period(long current) {
+//            final GregorianCalendar calendar = new GregorianCalendar();
+//            calendar.add(GregorianCalendar.DATE, 1);
+//            calendar.set(Calendar.HOUR_OF_DAY, 0);
+//            calendar.set(Calendar.SECOND, 0);
+//            calendar.set(Calendar.MINUTE, 30);
+//            calendar.set(Calendar.MILLISECOND, 0);
+//
+//            return calendar.getTime().getTime() - current;
+//        }
+//
+//        /**
+//         * 重新拉取出数据
+//         * @return
+//         */
+//        private SoureEntity poll(){
+//            return queue.poll();
+//        }
+//
+//        private void start(long delay,long period){
+//            Timer timer = new Timer();
+//            TaskDurad taskDurad = new TaskDurad();
+//            timer.schedule(taskDurad,delay,period);
+//        }
+//
+//        private void offer(){
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210217731","桂林"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210342923","桂林"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210420840","桂林"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210217771","桂林"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210176933","三亚"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210177868","三亚"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210318802","三亚"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210373477","东澳岛"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210174025","亚布力"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210218068","亚布力"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210178054","亚布力"));
+//            queue.offer(new SoureEntity("http://www.tuniu.com/tours/210173808","亚布力"));
+//        }
+//
+//        private class TaskDurad extends TimerTask{
+//            @Override
+//            public void run() {
+//                offer();
+//            }
+//        }
+//
+//        /**
+//         * 抓取线程
+//         * 1 获取到链接地址,解析出商品id
+//         * -- 2 请求接口 http://www.tuniu.com/yii.php?r=detail/tourV3Ajax/calendar&id=210352730&backCityCode=0&departCityCode=1808&refreshFileCache=0&type=json&bookCityCode=2500
+//         * 2 封装日期,格式化最近30天数据
+//         * 3 获取一个日期的数据,开始请求酒店的数据
+//         * 4 获取酒店价格,抽取出来每天的房型
+//         * 5 抽取卡券价格
+//         * 6 计算价格
+//         * 7 存储数据
+//         */
+//        private class Exture extends Thread{
+//            private Pattern pattern = Pattern.compile("\\d+");
+//            //获取日期数据,根据商品id(PRO_ID)
+//            private String DAY_SEARCH_URL = "http://www.tuniu.com/yii.php?r=detail/tourV3Ajax/calendar&id=PRO_ID&backCityCode=2500&departCityCode=2500&refreshFileCache=0&type=json&bookCityCode=2500";
+//            //获取酒店数据
+//            private String HOTEL_SEARCH_URL = "http://www.tuniu.com/yii.php?r=order/tourV3DriveOrder/getDefaultHotelNRTRoom&productId=PRO_ID&departCityCode=2500&backCityCode=0&bookCityCode=2500&adultNum=ADULT_NUM&childNum=CHILD_NUM&departDate=START_DAY";
+//            //卡券数据
+//            private String KAQUAN_SEARCH_URL = "http://www.tuniu.com/yii.php?r=order/DiyV3Order/GetDiyV3AltAdditionalItemResources";
+//            //时间格式化
+//            private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+//            private SimpleDateFormat form = new SimpleDateFormat("yyyy-MM-dd");
+//
+//            @Override
+//            public void run() {
+//                init();
+//
+//                while(true){
+//                    try {
+//                        //根据链接抽取出相对应的productId
+//                        SoureEntity source = poll();
+//                        if (source == null || source.getUrl().length() <= 0) {
+//                            logger.info("当前集合可能为空...线程休眠一定时间后接续...");
+//                            Thread.sleep(3000);
+//                            continue;
+//                        }
+//                        //抽取其中的productId
+//                        String pro = find(pattern, source.getUrl());
+//                        //获取到productId,后需要去请求日期数据
+//                        List<String> list = findDays(pro);
+//
+//                        //循环遍历日期数据,开始处理每天的数据请求
+//                        for (int i = 0; i < list.size(); i++) {
+//                            try {
+//                                //线程休眠
+//                                Thread.sleep(1500);
+//
+//                                String day = list.get(i);
+//                                //处理这一天的数据
+//                                dealData(day,source,pro,2,1);
+//
+//                                Thread.sleep(1500);
+//                                //线程休眠一定时间后继续
+//                                dealData(day,source,pro,2,0);
+//
+//                                Thread.sleep(1500);
+//                                //线程休眠一定时间后继续
+//                                dealData(day,source,pro,1,1);
+//                            } catch (Exception e) {
+//                                e.printStackTrace();
+//                            }
+//                        }
+//                    }catch (Exception e){
+//                        e.printStackTrace();
+//                    }
+//                }
+//            }
+//
+//            /**
+//             * 处理结果数据
+//             * @param day
+//             * @param pro
+//             */
+//            private void dealData(String day,SoureEntity source,String pro,int adultNum,int childNum){
 //                try{
-//                    Thread.sleep(1500);
+//                    //请求酒店数据
+//                    String link = find(HOTEL_SEARCH_URL,day,pro,adultNum,childNum);
+//                    //下载数据
+//                    Page page = download(request.setUrl(link),site);
+//                    //处理当前酒店数据
+//                    if (page == null || page.getHtml() == null || page.getHtml().length() <= 0) {
+//                        logger.info("当前集合可能为空...线程休眠一定时间后接续...");
+//                        return;
+//                    }
+//                    //hotel数据
+//                    JSONObject hotel = findHotel(page.getHtml());
+//                    //格式化数据
+//                    JSONArray bean = findRoomes(hotel);
+//                    if(bean == null)return;
+//                    //入住晚数
+//                    int sleep = hotel.getIntValue("journeyDays");
+//                    //获取卡券的数据
+//                    JSONObject tec = findTec(hotel,day,pro,adultNum,childNum);
+//                    //获取卡券的价格
+//                    int tecPrice = getPrice(tec,day,adultNum,childNum);
+//
+//                    List<Item> items = new ArrayList<Item>();
+//                    //循环获取数据
+//                    for(int i=0;i<bean.size();i++){
+//                        try{
+//                            JSONObject node = bean.getJSONObject(i);
+//                            //房间标题
+//                            String resName = node.getString("resName");
+//                            //maxAdultNum
+//                            int maxAdultNum = node.getIntValue("maxAdultNum");
+//                            //判断房间数
+//                            int roomNum = adultNum / maxAdultNum;
+//                            //获取价格
+//                            int totalPrice = getPrice(node);
+//                            //获取房型
+//                            String houseType = type(resName);
+//
+//                            //打印数据  那一天  那个店铺  店铺链接   成人数   儿童数   酒店价格   卡券价格
+//                            Item item = new Item();
+//                            item.setId(Long.parseLong(pro));
+//                            item.setAdultNum(adultNum);
+//                            item.setChildNum(childNum);
+//                            item.setUrl(source.getUrl());
+//                            item.setSleep(sleep);
+//                            item.setCheckInDay(day);
+//                            item.setHouseDetail(resName);
+//                            item.setHouseType(houseType);
+//                            item.setRoomNum(roomNum);
+//                            item.setTecPrice(tecPrice);
+//                            item.setSinglePrice(totalPrice);
+//                            item.setRegion(source.getRegion());
+//                            item.setChannel(channel);
+//                            item.setVday(sdf.format(new Date()));
+//
+//                            items.add(item);
+//                            System.out.println(day + "\t" + pro + "\t" + resName + "\t" + adultNum + "\t" + childNum + "\t" + totalPrice * roomNum + "\t" + tecPrice);
+//                        }catch (Exception e){
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                    //提交数据的到数据库中
+//                    factory.insert("localhost","item_data",items,Item.class);
 //                }catch (Exception e){
 //                    e.printStackTrace();
 //                }
 //            }
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }
-//    }
 //
-//    /**
-//     * 抽取数据
-//     * @param cityName
-//     * @param priority
-//     * @param spiderQueues
-//     */
-//    private void parser(Page page,String cityName,int priority,SpiderQueues spiderQueues,Map<String,Map<Integer,String>> days){
-//        try{
-//            //抽取数据
-//            Node node = page.$("div.hotel-list div.hotel");
-//            if(node == null || node.size() <= 0){
-//                logger.error("在途牛酒店中,搜索出来的结果中为空,对应的搜索条件为:div.hotel-list div.hotel");
-//                return;
+//            /**
+//             * 冲标题中抽取出房型
+//             * @param title
+//             * @return
+//             */
+//            private String type(String title){
+//                try{
+//                    if(title == null || title.length() <= 0 || !title.contains("--"))return null;
+//                    String[] tmp = title.split("--");
+//                    if(tmp == null || tmp.length <= 0)return null;
+//                    return tmp[0];
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return null;
 //            }
-//            //循环遍历,抽取其中的链接,进行后续的操作
-//            for(int i=0;i<node.size();i++){
-//                //抽取其中的超链接
-//                String href = node.css(i,"h2.nameAndIcon a.name","href");
-//                String title = node.css(i,"h2.nameAndIcon a.name");
-//                if(href == null || href.length() <= 0 || href.contains("javascript"))continue;
 //
-//                String id = find(href);
+//            /**
+//             * 找到哪天的价格
+//             * @param tec
+//             * @param day
+//             * @param adultNum
+//             * @param childNum
+//             * @return
+//             */
+//            private int getPrice(JSONObject tec,String day,int adultNum,int childNum){
+//                if(tec == null)return 0;
+//                if(tec.toJSONString().contains("暂无附加项目数据"))return 0;
+//                try{
+//                    JSONObject data = tec.getJSONObject("data");
+//                    JSONObject type = data.getJSONObject("5");
+//                    JSONArray array = type.getJSONArray("resList");
+//                    if(array == null || array.size() < 0)return 0;
+//                    JSONObject bean = array.getJSONObject(0);
+//                    JSONArray tmp = bean.getJSONArray("resourceDatePrices");
+//                    //获取当前日期的价格
+//                    int price = 0;
+//                    for(int i=0;i<tmp.size();i++){
+//                        JSONObject node = tmp.getJSONObject(i);
 //
-//                //循环遍历日期数据
-//                for(Map.Entry<String,Map<Integer,String>> dayEntry : days.entrySet()){
-//                    //入住日期
-//                    String checkInDay = dayEntry.getKey();
-//                    //遍历入住天数
-//                    for(Map.Entry<Integer,String> sleepEntry : dayEntry.getValue().entrySet()){
-//                        //入住多久
-//                        int sleep = sleepEntry.getKey();
-//                        //离开的日期
-//                        String end = sleepEntry.getValue();
+//                        //获取当前日期
+//                        String current = node.getString("departDate");
 //
-//                        String url = DETAIL_URL.replaceAll("PRO_ID",id).replaceAll("START_DAY",checkInDay).replaceAll("END_DAY",end);
+//                        if(day.contains(current)){
+//                            //获取价格
+//                            int childPrice = node.getIntValue("childPrice");
+//                            int adultPrice = node.getIntValue("price");
 //
-//                        logger.info("途牛搜索: " + title + "\t" + url);
+//                            price = adultPrice * adultNum + childPrice * childNum;
 //
-//                        TuNiuSearchItem item = new TuNiuSearchItem(priority,channel,checkInDay,url,cityName,sleep);
-//                        spiderQueues.enqueue(item);
+//                            break;
+//                        }
 //                    }
+//                    return price;
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return 0;
+//            }
+//
+//            /**
+//             * 获取价格数据
+//             * @param node
+//             * @return
+//             */
+//            private int getPrice(JSONObject node){
+//                JSONObject bean = node.containsKey("price")?node.getJSONObject("price"):null;
+//                if(bean == null)return 0;
+//                int total = 0;
+//                for(String key : bean.keySet()){
+//                    total = total + bean.getIntValue(key);
+//                }
+//                return total;
+//            }
+//
+//            /**
+//             * 解析数据
+//             * @param json
+//             * @return
+//             */
+//            private JSONObject findHotel(String json){
+//                JSONObject bean = JSON.parseObject(json);
+//                JSONObject data = bean.containsKey("data")?bean.getJSONObject("data"):null;
+//                JSONObject hd = data.getJSONObject("hotel");
+//                JSONObject hotels = null;
+//                for(String key : hd.keySet()){
+////                JSONObject h = hd.getJSONObject(key);
+////                //抽取数据
+////                hotels = h.containsKey("hotels")?h.getJSONObject("hotels"):null;
+////                break;
+//                    hotels = hd.getJSONObject(key);
+//                    break;
+//                }
+//                return hotels;
+//            }
+//
+//            private JSONArray findRoomes(JSONObject hotels){
+//                JSONObject data = hotels.getJSONObject("hotels");
+//                JSONArray obj = null;
+//                for(String key : data.keySet()){
+//                    JSONObject h = data.getJSONObject(key);
+//                    //抽取数据
+//                    obj = h.containsKey("rooms")?h.getJSONArray("rooms"):null;
+//                    break;
+//                }
+//                return obj;
+//            }
+//
+//            /**
+//             * 获取数据
+//             * @param day
+//             * @param pro
+//             * @return
+//             */
+//            private JSONObject findTec(JSONObject hotels,String day,String pro,int adultNum,int childNum){
+//                try{
+//                    //获取对应的journeyId
+//                    String jid = hotels.getString("journeyId").replaceAll("j_","");
+//
+//                    //设置请求方式
+//                    request.setMethod("POST")
+//                            .addPostData("postData[productId]",pro)
+//                            .addPostData("postData[departCityCode]","2500")
+//                            .addPostData("postData[backCityCode]","2500")
+//                            .addPostData("postData[adultNum]","" + adultNum)
+//                            .addPostData("postData[childNum]","" + childNum)
+//                            .addPostData("postData[departDate]",day)
+//                            .addPostData("postData[journeyId]",jid);
+//                    //线程休眠1s后进行下载
+//                    Thread.sleep(1000);
+//                    //下载数据,并判断数据
+//                    Page page = download(request.setUrl(KAQUAN_SEARCH_URL),site);
+//                    if(page == null || page.getHtml() == null || page.getHtml().length() <= 0){
+//                        logger.info("下载数据异常,需要处理异常数据..");
+//                        return null;
+//                    }
+//                    //开始解析数据
+//                    return JSON.parseObject(page.getHtml());
+//                }   catch (Exception e){
+//                    e.printStackTrace();
+//                }finally{
+//                    request.setMethod("GET");
+//                }
+//                return null;
+//            }
+//
+//            /**
+//             * 写入月份日期
+//             * @param prodId
+//             * @return
+//             */
+//            private List<String> findDays(String prodId){
+//                List<String> days = new ArrayList<String>();
+//                try{
+//                    //下载数据,并判断数据
+//                    String link = DAY_SEARCH_URL.replaceAll("PRO_ID",prodId);
+//                    Page page = download(request.setUrl(link),site);
+//                    if(page == null || page.getHtml() == null || page.getHtml().length() <= 0){
+//                        logger.info("下载日期数据出现错误....");
+//                        return days;
+//                    }
+//                    //开始解析数据
+//                    JSONObject bean = JSON.parseObject(page.getHtml());
+//                    JSONArray array = bean.containsKey("planDateArr")?bean.getJSONArray("planDateArr"):null;
+//                    //将数据写入到集合中
+//                    wrtie(days,array);
+//                }   catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return days;
+//            }
+//
+//            private Page download(Request request,Site site){
+//                try{
+//                    IProxy proxy = getProxy();
+//                    if(proxy == null){
+//                        proxy = new IProxy();
+//                    }
+//                    return downloader.download(request,site,proxy.getHost(),proxy.getPort());
+////                return downloader.download(request,site,null,-1);
+//                }catch (Exception e){
+//                    e.printStackTrace();
+//                }
+//                return null;
+//            }
+//
+//            /**
+//             * 获取代理
+//             *
+//             * @return
+//             */
+//            public IProxy getProxy() {
+//                return ProxyManager.me().poll();
+//            }
+//
+//            private void wrtie(List<String> days,JSONArray array){
+//                if(array == null || array.size() <= 0){
+//                    array = init();
+//                }
+//                //当前日期
+//                long max = System.currentTimeMillis() + 86400l * 1000l * 30;
+//                //遍历集合,拉去途牛的数据
+//                for(int i=0;i<array.size();i++){
+//                    String day = array.getString(i);
+//
+//                    //判断日期是否超过30天
+//                    try{
+//                        Date end = form.parse(day);
+//                        long endUnix = end.getTime();
+//
+//                        if(endUnix >= max)continue;
+//                    }catch (Exception e){}
+//
+//                    logger.info("添加的日期数据为:" + day);
+//                    //将数据添加到缓存中
+//                    days.add(day);
 //                }
 //            }
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }
-//    }
 //
-//    /**
-//     * 下载网页源码
-//     * @param link
-//     * @return
-//     */
-//    public Page getPage(String link){
-//        try{
-//            return downloader.download(request.setUrl(link),site);
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }
-//        return null;
-//    }
+//            /**
+//             *
+//             * @return
+//             */
+//            private JSONArray init(){
+//                JSONArray array = new JSONArray();
+//                SimpleDateFormat dfs = new SimpleDateFormat("yyyy-MM-dd");
+//                for (int i = 0; i <= 30; i++) {
+//                    //获取其实天
+//                    long day = System.currentTimeMillis() + 86400l * 1000 * i;
+//                    String start = dfs.format(new Date(day));
 //
-//    /**
-//     * 初始化城市数据
-//     */
-//    private void init(){
-//        //初始化城市数据
-//        city.put("628","东澳岛");
-//        city.put("906","三亚");
-//        city.put("705","桂林");
-//    }
-//
-//    /**
-//     * 初始化日期天数
-//     * @return
-//     */
-//    private Map<String,Map<Integer,String>> initDay(){
-//        int days = Conf.CRAWLING_RANGE_DAYS;
-//        int[] duration = Conf.CRAWLING_SLEEP_DAYS;
-//
-//        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-//        Map<String,Map<Integer,String>> result = new HashMap<>();
-//        //循环遍历数据,初始化日期数据
-//        for(int i=0;i<days;i++){
-//            //i = 0 表示当天
-//            long current = System.currentTimeMillis() + 86400l * 1000 * i;
-//            String start = sdf.format(new Date(current));
-//
-//            //结果存储集合
-//            Map<Integer,String> sleepMap = new HashMap<>();
-//            //循环遍历,获取返回日期
-//            for(int sleep : duration){
-//                long nextUnix = current + 86400l * 1000 * sleep;
-//                String next = sdf.format(nextUnix);
-//
-//                sleepMap.put(sleep,next);
+//                    array.add(start);
+//                }
+//                return array;
 //            }
-//            //向结果集合中插入数据
-//            result.put(start,sleepMap);
-//        }
-//        return result;
-//    }
 //
-//    private String find(String url){
-//        Matcher matcher = pattern.matcher(url);
-//        if(matcher.find())return matcher.group(1);
-//        return null;
+//            /**
+//             *
+//             * @param url
+//             * @param day
+//             * @param proid
+//             * @param adultNum
+//             * @param childNum
+//             * @return
+//             */
+//            private String find(String url,String day,String proid,int adultNum,int childNum){
+//                return url.replaceAll("PRO_ID",proid)
+//                        .replaceAll("ADULT_NUM","" + adultNum)
+//                        .replaceAll("START_DAY",day)
+//                        .replaceAll("CHILD_NUM","" + childNum);
+//            }
+//
+//            /**
+//             * 获取数据
+//             * @param pattern
+//             * @param src
+//             * @return
+//             */
+//            private String find(Pattern pattern,String src){
+//                Matcher matcher = pattern.matcher(src);
+//                if(matcher.find())return matcher.group();
+//                return null;
+//            }
+//        }
 //    }
-//}

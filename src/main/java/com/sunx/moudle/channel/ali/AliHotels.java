@@ -70,6 +70,7 @@ public class AliHotels implements IMonitor {
                                       .replaceAll("CITY_NAME",region)
                                       .replaceAll("SHOP_ID",tmps[1]);
                     logger.info("阿里酒店抽取到的数据为：" + link);
+                    //
                     //封装结果数据
                     TaskEntity taskEntity = new TaskEntity();
                     taskEntity.setUrl(link);
