@@ -10,26 +10,23 @@ import com.sunx.downloader.Site;
 import com.sunx.parser.Node;
 import com.sunx.parser.Page;
 import com.sunx.storage.DBFactory;
+import com.sunx.utils.TimerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.*;
 
 /**
  * http://s.lvmama.com/scenictour/H8?keyword=club+med#list
  */
 public class LvMama implements IMonitor {
     //关键字
-    private String[] keys = new String[]{"club med"};
+    private String[] keys = new String[]{"club med","clubmed"};
     //请求集合
     private String[] urls = new String[]{
-                                        "http://s.lvmama.com/scenictour/H8?keyword=KEY_WORD#list"    //酒店 + 景点
-                                        ,
-//                                        "http://s.lvmama.com/freetour/H9?keyword=KEY_WORD&k=0#list" //机票 + 酒店
-//                                        ,
-                                        "http://s.lvmama.com/local/H8?keyword=KEY_WORD#list"        //当地游
+                                        "http://s.lvmama.com/scenictour/H8?keyword=KEY_WORD#list"   //酒店 + 景点
                                         };
     //日志记录
     private static final Logger logger = LoggerFactory.getLogger(LvMama.class);
@@ -40,11 +37,12 @@ public class LvMama implements IMonitor {
     //请求对象
     private Request request = new Request();
 
-    private static String SCNICTOUR_BASE_URL = "http://dujia.lvmama.com/package/";
-    private static String LOCAL_BASE_URL = "http://dujia.lvmama.com/local/";
-    private static String FTEE_TOUR_URL = "http://dujia.lvmama.com/freetour/";
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    //格式化日期
+    private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    //缓存,用于去重
+    private Set<String> cache = new HashSet<>();
 
     /**
      * 抓取种子数据
@@ -53,6 +51,8 @@ public class LvMama implements IMonitor {
      * @param name      渠道名称
      */
     public void monitor(DBFactory factory, Long id, String name) {
+        //开始处理,遍历集合,构造数据
+        List<String> days = TimerUtils.initDay(sdf, Constant.CRAWLING_RANGE_DAYS);
         //遍历每个关键字,分别进行处理
         for(String keyWord : keys){
             //对关键字进行编码
@@ -65,12 +65,13 @@ public class LvMama implements IMonitor {
                     String link = searchUrl.replaceAll("KEY_WORD",enWord);
 
                     //处理每一个请求的数据
-                    dealData(factory,id,name,link);
+                    dealData(factory,id,days,name,link);
                 }catch (Exception e){
                     e.printStackTrace();
                 }
             }
         }
+        cache.clear();
     }
 
     /**
@@ -80,7 +81,7 @@ public class LvMama implements IMonitor {
      * @param name
      * @param link
      */
-    public void dealData(DBFactory factory, Long id, String name,String link){
+    public void dealData(DBFactory factory, Long id,List<String> days, String name,String link){
         try{
             //下载网页源码,解析其中的链接,并判断是否需要翻页
             //请求结果数据
@@ -96,18 +97,10 @@ public class LvMama implements IMonitor {
                 logger.error("解析出现错误,css为：div[class=product-item clearfix],解析的网页为:" + link);
                 return;
             }
-            if(link.contains("/scenictour/")){
-                //遍历处理每个数据
-                dealData(factory,id,name,SCNICTOUR_BASE_URL,node,"自由行");
-            }else if(link.contains("/local/")){
-                //遍历处理每个数据
-                dealData(factory,id,name,LOCAL_BASE_URL,node,"当地游");
-            }else if(link.contains("/freetour/")){
-                //遍历处理每个数据
-                dealData(factory,id,name,FTEE_TOUR_URL,node,"机票+酒店");
-            }
+            //遍历处理每个数据
+            dealData(factory,id,days,name,node);
             //处理下是否有下一页
-            dealNext(factory,id,name,page);
+            dealNext(factory,id,days,name,page);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -120,33 +113,30 @@ public class LvMama implements IMonitor {
      * @param id
      * @param name
      */
-    public void dealData(DBFactory factory, Long id, String name,String base,Node node,String type){
+    public void dealData(DBFactory factory, Long id,List<String> days, String name,Node node){
+        List<TaskEntity> tasks = new ArrayList<>();
         //遍历数据
         for(int i=0;i<node.size();i++){
-            String title = node.css(i,"h3.product-title a[title]","title");
-            String href = base + node.css(i,"div.product-info[id]","id");
-            String storeName = node.css(i,"div.product-hotel span");
-            if(storeName == null || storeName.length() <= 0){
-                storeName = "unknown";
-            }
+            String href = node.css(i,"h3.product-title > a","href");
             if(href == null || href.length() <= 0)continue;
-            //封装结果数据
-            TaskEntity taskEntity = new TaskEntity();
-            taskEntity.setUrl(href);
-            taskEntity.setChannelId(id);
-            taskEntity.setChannelName(name);
-            taskEntity.setCreateAt(fs.format(new Date()));
-            taskEntity.setShopName(storeName);
-            taskEntity.setTitle(title);
-            taskEntity.setType(type);
-            taskEntity.setStatus(Constant.TASK_NEW);
-            taskEntity.setRegion(Constant.DEFALUT_REGION);
+            if(!cache.add(href))continue;
 
-            logger.info("驴妈妈的种子链接为:" + taskEntity.toString());
+            for(String checkInDay : days){
+                //封装结果数据
+                TaskEntity taskEntity = new TaskEntity();
+                taskEntity.setUrl(href);
+                taskEntity.setChannelId(id);
+                taskEntity.setChannelName(name);
+                taskEntity.setCreateAt(fs.format(new Date()));
+                taskEntity.setStatus(Constant.TASK_NEW);
+                taskEntity.setRegion(Constant.DEFALUT_REGION);
+                taskEntity.setCheckInDate(checkInDay);
 
-            //将最后一批数据提交到数据库中
-            factory.insert(Constant.DEFAULT_DB_POOL,taskEntity);
+                tasks.add(taskEntity);
+            }
+            logger.info("驴妈妈的种子链接为:" + href);
         }
+        factory.insert(Constant.DEFAULT_DB_POOL, tasks);
     }
 
     /**
@@ -156,7 +146,7 @@ public class LvMama implements IMonitor {
      * @param id
      * @param name
      */
-    public void dealNext(DBFactory factory, Long id, String name,Page page){
+    public void dealNext(DBFactory factory, Long id,List<String> days, String name,Page page){
         try{
             String href = page.css("a[class=nextpage]:contains(下一页)","onclick");
             //如果没有下一页了
@@ -165,7 +155,7 @@ public class LvMama implements IMonitor {
             String link = clean(href);
 
             //获取到需要处理的额数据以后,进行下载处理
-            dealData(factory,id,name,link);
+            dealData(factory,id,days,name,link);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -193,5 +183,9 @@ public class LvMama implements IMonitor {
             e.printStackTrace();
         }
         return keyWord;
+    }
+
+    public static void main(String[] args){
+        new LvMama().monitor(null,10l,"驴妈妈");
     }
 }

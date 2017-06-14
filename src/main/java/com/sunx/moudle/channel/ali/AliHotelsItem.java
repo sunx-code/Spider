@@ -3,6 +3,7 @@ package com.sunx.moudle.channel.ali;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.sun.org.apache.bcel.internal.generic.TABLESWITCH;
 import com.sunx.constant.Constant;
 import com.sunx.downloader.Downloader;
 import com.sunx.downloader.HttpClientDownloader;
@@ -18,6 +19,7 @@ import com.sunx.moudle.proxy.ProxyManager;
 import com.sunx.moudle.template.Template;
 import com.sunx.storage.DBFactory;
 import com.sunx.utils.FileUtil;
+import com.sunx.utils.Helper;
 import com.sunx.utils.MD5;
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.remote.RemoteWebDriver;
@@ -50,7 +52,7 @@ public class AliHotelsItem  implements IParser {
 
     //酒店详情数据的解析格式
     private String ALI_HOTEL_URL = "https://acs.m.taobao.com/h5/mtop.trip.hotel.hotelDetail/1.0?ttid=201300@travel_h5_3.1.0&type=jsonp&callback=mtopjsonp1&api=mtop.trip.hotel.hotelDetail&v=1.0&appKey=12574478&t=TIME_CODE&sign=SIGN_CODE&data=";
-
+    private String SEARCH_DATA_URL = "https://acs.m.taobao.com/h5/mtop.trip.hotel.patternRender/1.0?type=jsonp&callback=mtopjsonp1&api=mtop.trip.hotel.patternRender&v=1.0&deviceId=3358a8dc-bc96-4917-h5h5-e79ab325h5h5&ttid=201300%40travel_h5_3.1.0&appKey=12574478&t=TIME_CODE&sign=SIGN_CODE&data=";
     //日志记录
     private static final Logger logger = LoggerFactory.getLogger(AliHotelsItem.class);
 
@@ -62,6 +64,10 @@ public class AliHotelsItem  implements IParser {
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    //搜索需要的请求参数
+    private String SEARCH_DATA = "{\"patternName\":\"hotel_search\",\"patternVersion\":\"2.0\",\"clientPlatform\":\"h5\",\"args\":\"{\\\"keyWords\\\":\\\"clubmed\\\",\\\"cityCode\\\":\\\"CITY_CODE\\\",\\\"cityName\\\":\\\"CITY_NAME\\\",\\\"checkIn\\\":\\\"CHECK_IN_DAY\\\",\\\"checkOut\\\":\\\"CHECK_OUT_DAY\\\",\\\"priceMin\\\":\\\"0\\\",\\\"priceMax\\\":\\\"-1\\\",\\\"star\\\":\\\"-1\\\",\\\"order\\\":\\\"0\\\",\\\"dir\\\":\\\"0\\\",\\\"pageNo\\\":\\\"1\\\",\\\"pageSize\\\":\\\"20\\\",\\\"labels\\\":\\\"-1\\\",\\\"offset\\\":\\\"0\\\",\\\"sellerId\\\":\\\"-1\\\",\\\"isIncludePayLater\\\":\\\"0\\\",\\\"filterByPayment\\\":\\\"0\\\",\\\"isNeedSelectData\\\":\\\"1\\\",\\\"isDisplayMultiRate\\\":\\\"1\\\",\\\"useTemplate\\\":\\\"1\\\",\\\"isShowExpedia\\\":\\\"1\\\",\\\"supportPCI\\\":\\\"1\\\",\\\"sversion\\\":\\\"6\\\",\\\"displayPackage\\\":1}\",\"h5Version\":\"0.8.55\",\"_prism_lk\":\"{\\\"_qid\\\":\\\"\\\",\\\"_skey\\\":\\\"\\\"}\"}";
+    //访问详情需要的数据内容
+    private String RESULT_DATA = "{\"filterByPayment\":\"0\",\"cityCode\":\"CITY_ID\",\"checkIn\":\"CHECK_IN_DAY\",\"checkOut\":\"CHECK_OUT_DAY\",\"guid\":\"\",\"from\":\"hotel-list-page\",\"surroundingByHotel\":\"0\",\"adultNum\":\"2\",\"wirelessStraightField\":\"{\\\"searchId\\\":\\\"SEARCH_ID\\\"}\",\"hid\":\"0\",\"cityName\":\"CITY_NAME\",\"shid\":\"SHOP_ID\",\"spm\":\"181.7437890.1998398719._standard_0\",\"ttid\":\"201300@travel_h5_3.1.0\",\"_preProjVer\":\"0.8.55\",\"_projVer\":\"0.8.60\",\"isIncludePayLater\":0,\"needDeal\":1,\"childrenAges\":\"\",\"isShowExpedia\":1,\"supportPCI\":1,\"sversion\":8,\"displayPackage\":1,\"hidden\":\"{\\\"straight_field\\\":{\\\"searchId\\\":\\\"SEARCH_ID\\\"}}\",\"h5Version\":\"0.8.60\"}";
 
     /**
      * 构造函数初始化数据
@@ -108,29 +114,95 @@ public class AliHotelsItem  implements IParser {
      */
     public int toParse(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task){
         try{
+            JSONObject param = JSON.parseObject(task.getUrl());
+            //改动搜索参数data
+            String dataStr = toSearchData(param);
             //获取下载的网页内容
-            String src = getSrc(task);
+            String src = getSrc(SEARCH_DATA_URL,dataStr);
             if(src == null || src.length() <= 0)return -1;
             if(src.contains("FAIL_SYS")){
-                logger.info(src);
+                logger.info("处理搜索数据错误 -> " + src);
                 h5_tk = "";
                 h5_tk_enc = "";
                 h5_tk_time = "";
                 return 0;
             }
+            //获取到搜索数据以后,开始进行详情数据的获取
             logger.info("下载数据完成,开始处理数据.....");
             //格式化数据为json
-            JSONObject bean = JSON.parseObject(src);
+            JSONObject bean = toSearchDetail(param,src);
             if(bean == null)return -1;
             JSONObject data = bean.getJSONObject("data");
             //开始处理第一个网页快照内容
-            String snapshot = toSnapshot(data,task.getUrl(),"ali-hotel");
+            String snapshot = toSnapshot(data,param,"ali-hotel");
             //解析内容,并将相应的数据插入到数据库中
             return dealData(factory,task,data,snapshot);
         }catch (Exception e){
             e.printStackTrace();
         }
         return -1;
+    }
+
+    /**
+     * 格式化数据
+     * @param param
+     * @param src
+     * @return
+     */
+    public JSONObject toSearchDetail(JSONObject param,String src){
+        JSONObject bean = JSON.parseObject(src);
+        //开始获取key
+        JSONObject dataBean = bean.getJSONObject("data");
+        if(dataBean == null || !dataBean.containsKey("_prism_lk"))return null;
+        JSONObject lk = dataBean.getJSONObject("_prism_lk");
+        if(lk == null || !lk.containsKey("_skey"))return null;
+        String searchId = lk.getString("_skey");
+        //获取到searchId后,开始执行详细的数据获取
+        String detailData = toData(param,searchId);
+
+        //开始处理详情数据内容
+        //获取下载的网页内容
+        String html = getSrc(ALI_HOTEL_URL,detailData);
+        if(html == null || html.length() <= 0)return null;
+        if(html.contains("FAIL_SYS")){
+            logger.info("处理详情数据内容 -> " + html);
+            h5_tk = "";
+            h5_tk_enc = "";
+            h5_tk_time = "";
+            return null;
+        }
+        //获取到搜索数据以后,开始进行详情数据的获取
+        logger.info("下载数据完成,开始处理数据.....");
+        return JSON.parseObject(html);
+    }
+
+    /**
+     *
+     * @param param
+     * @param searchId
+     * @return
+     */
+    public String toData(JSONObject param,String searchId){
+        return RESULT_DATA.replaceAll("CITY_ID",param.getString("cityId"))
+                          .replaceAll("CHECK_IN_DAY",param.getString("checkInDay"))
+                          .replaceAll("CHECK_OUT_DAY",param.getString("checkOutDay"))
+                          .replaceAll("SEARCH_ID",searchId)
+                          .replaceAll("CITY_NAME",param.getString("cityName"))
+                          .replaceAll("SHOP_ID",param.getString("shopId"))
+                          ;
+    }
+
+    /**
+     * 替换搜索data中的参数内容
+     * @param bean
+     * @return
+     */
+    public String toSearchData(JSONObject bean){
+        return SEARCH_DATA.replaceAll("CITY_CODE",bean.getString("cityId"))
+                          .replaceAll("CITY_NAME",bean.getString("cityName"))
+                          .replaceAll("CHECK_IN_DAY",bean.getString("checkInDay"))
+                          .replaceAll("CHECK_OUT_DAY",bean.getString("checkOutDay"))
+                          ;
     }
 
     /**
@@ -188,7 +260,7 @@ public class AliHotelsItem  implements IParser {
             resultEntity.setPath(htmPath);
             resultEntity.setSleep(task.getSleep());
 
-            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+//            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
             return 1;
         }catch (Exception e){
             e.printStackTrace();
@@ -260,10 +332,10 @@ public class AliHotelsItem  implements IParser {
     }
     /**
      * 下载数据
-     * @param task
+     * @param data
      * @return
      */
-    public String getSrc(TaskEntity task){
+    public String getSrc(String url,String data){
         String page = null;
         int index = 0;
         while(index <= 2){
@@ -271,7 +343,7 @@ public class AliHotelsItem  implements IParser {
                 if (h5_tk != null && h5_tk.length() > 0) {
                     site.addHeader("Cookie", "_m_h5_tk=" + h5_tk + "_" + h5_tk_time + "; _m_h5_tk_enc=" + h5_tk_enc + ";");
                 }
-                String link = getUrl(task, h5_tk, appkey);
+                String link = getUrl(url,data, h5_tk, appkey);
                 page = loader(downloader,request.setUrl(link), site);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
@@ -306,43 +378,21 @@ public class AliHotelsItem  implements IParser {
      */
     public String loader(Downloader downloader,Request request, Site site){
         String src = null;
-        try{
-            logger.error("开始下载网页内容......");
-            int j = 0;
-            while(j <= 3){
-                //获取代理
-                IProxy proxy = null;
-                int i = 0;
-                while(proxy == null || i < 5){
-                    proxy = ProxyManager.me().poll();
-                    if(proxy == null){
-                        i++;
-                        try{
-                            logger.error("获取代理失败,等待1s后继续重新获取代理....");
-                            Thread.sleep(1000);
-                        }catch ( Exception e){
-                            e.printStackTrace();
-                        }
-                        continue;
-                    }
-                    break;
+        int i = 0;
+        while(i < 3){
+            try{
+                src = Helper.downlaoder(downloader,request,site,false);
+                i++;
+                if(src == null || src.contains("<!DOCTYPE html>")){
+                    logger.error("下载失败,等待下次重试......");
+                    Thread.sleep(1500);
+                    continue;
                 }
-                if(proxy == null){
-                    proxy = new IProxy();
-                }
-                System.err.println("开始下载......");
-                src = downloader.downloader(request,site,proxy.getHost(),proxy.getPort());
-                if(src != null && proxy != null && !src.contains("<!DOCTYPE html>")){
-                    ProxyManager.me().offer(proxy);
-                    break;
-                }
-                System.err.println("下载失败,等待下次重试......");
-                j++;
+                break;
+            }catch (Exception e){
+                e.printStackTrace();
             }
-        }catch (Exception e){
-            e.printStackTrace();
         }
-        System.err.println("下载完成.....");
         return src;
     }
 
@@ -366,15 +416,14 @@ public class AliHotelsItem  implements IParser {
 
     /**
      *
-     * @param task
+     * @param data
      * @return
      */
-    public String getUrl(TaskEntity task,String h5_tk,String appkey) throws Exception{
+    public String getUrl(String url,String data,String h5_tk,String appkey) throws Exception{
         String t = System.currentTimeMillis() + "";
-        String data = task.getUrl();
         String sign = sign(h5_tk,t,appkey,data);
 
-        return ALI_HOTEL_URL.replaceAll("TIME_CODE",t).replaceAll("SIGN_CODE",sign) + URLEncoder.encode(data,"utf-8");
+        return url.replaceAll("TIME_CODE",t).replaceAll("SIGN_CODE",sign) + URLEncoder.encode(data,"utf-8");
     }
 
     /**
@@ -396,20 +445,18 @@ public class AliHotelsItem  implements IParser {
      * @param type
      * @return
      */
-    public String toSnapshot(JSONObject bean,String url,String type){
+    public String toSnapshot(JSONObject bean,JSONObject data,String type){
         //获取模板
         String template = Template.me().get(type);
         try{
-            //格式化数据
-            JSONObject data = JSON.parseObject(url);
             //开始替换数据
             template = template.replaceAll("#SHOP_NAME",bean.getString("name"))
                                .replaceAll("#SHOP_SCORE",bean.getString("rateScore"))
                                .replaceAll("#SHOP_REPLY_NUM",bean.getString("rateNumber"))
                                .replaceAll("#SHOP_DISTRICT",bean.getString("area"))
                                .replaceAll("#SHOP_ADDRESS",bean.getString("address"))
-                               .replaceAll("#CHECK_IN_DATA",data.getString("checkIn"))
-                               .replaceAll("#CHECK_OUT_DATA",data.getString("checkOut"));
+                               .replaceAll("#CHECK_IN_DATA",data.getString("checkInDay"))
+                               .replaceAll("#CHECK_OUT_DATA",data.getString("checkOutDay"));
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -465,15 +512,31 @@ public class AliHotelsItem  implements IParser {
         return template;
     }
 
-    public static void main(String[] args){
-        TaskEntity taskEntity = new TaskEntity();
-        taskEntity.setChannelId(5);
-        taskEntity.setChannelName("阿里旅行");
-        taskEntity.setCheckInDate("2017-05-23");
-        taskEntity.setRegion("三亚");
-        taskEntity.setSleep(2);
-        taskEntity.setUrl("{\"filterByPayment\":\"0\",\"cityCode\":\"460200\",\"checkIn\":\"2017-05-23\",\"checkOut\":\"2017-05-25\",\"guid\":\"\",\"from\":\"hotel-list-page\",\"surroundingByHotel\":\"0\",\"adultNum\":\"2\",\"wirelessStraightField\":\"{\\\"searchId\\\":\\\"\\\"}\",\"hid\":\"0\",\"cityName\":\"三亚\",\"shid\":\"51141195\",\"spm\":\"\",\"ttid\":\"201300@travel_h5_3.1.0\",\"_preProjVer\":\"0.8.40\",\"_projVer\":\"0.8.40\",\"isIncludePayLater\":0,\"needDeal\":1,\"childrenAges\":\"\",\"isShowExpedia\":1,\"supportPCI\":1,\"sversion\":7,\"displayPackage\":1,\"hidden\":\"{\\\"straight_field\\\":{\\\"searchId\\\":\\\"\\\"}}\",\"h5Version\":\"0.8.40\"}");
+    public static void main(String[] args) throws Exception{
+        AliHotelsItem item = new AliHotelsItem();
+//        String data = "{\"filterByPayment\":\"0\",\"cityCode\":\"110100\",\"checkIn\":\"2017-06-12\",\"checkOut\":\"2017-06-13\",\"guid\":\"\",\"from\":\"hotel-list-page\",\"surroundingByHotel\":\"0\",\"adultNum\":\"2\",\"wirelessStraightField\":\"{\\\"searchId\\\":\\\"c9b90661b61e4a76bfef8ba40a45ae16\\\"}\",\"hid\":\"0\",\"cityName\":\"北京市\",\"shid\":\"10858331\",\"spm\":\"181.7437890.1998398719._standard_0\",\"ttid\":\"201300@travel_h5_3.1.0\",\"_preProjVer\":\"0.8.55\",\"_projVer\":\"0.8.60\",\"isIncludePayLater\":0,\"needDeal\":1,\"childrenAges\":\"\",\"isShowExpedia\":1,\"supportPCI\":1,\"sversion\":8,\"displayPackage\":1,\"hidden\":\"{\\\"straight_field\\\":{\\\"searchId\\\":\\\"c9b90661b61e4a76bfef8ba40a45ae16\\\"}}\",\"h5Version\":\"0.8.60\"}";
+        String data = "{\"patternName\":\"hotel_search\",\"patternVersion\":\"2.0\",\"clientPlatform\":\"h5\",\"args\":\"{\\\"keyWords\\\":\\\"clubmed\\\",\\\"cityCode\\\":\\\"110100\\\",\\\"cityName\\\":\\\"北京市\\\",\\\"checkIn\\\":\\\"2017-06-12\\\",\\\"checkOut\\\":\\\"2017-06-13\\\",\\\"priceMin\\\":\\\"0\\\",\\\"priceMax\\\":\\\"-1\\\",\\\"star\\\":\\\"-1\\\",\\\"order\\\":\\\"0\\\",\\\"dir\\\":\\\"0\\\",\\\"pageNo\\\":\\\"1\\\",\\\"pageSize\\\":\\\"20\\\",\\\"labels\\\":\\\"-1\\\",\\\"offset\\\":\\\"0\\\",\\\"sellerId\\\":\\\"-1\\\",\\\"isIncludePayLater\\\":\\\"0\\\",\\\"filterByPayment\\\":\\\"0\\\",\\\"isNeedSelectData\\\":\\\"1\\\",\\\"isDisplayMultiRate\\\":\\\"1\\\",\\\"useTemplate\\\":\\\"1\\\",\\\"isShowExpedia\\\":\\\"1\\\",\\\"supportPCI\\\":\\\"1\\\",\\\"sversion\\\":\\\"6\\\",\\\"displayPackage\\\":1}\",\"h5Version\":\"0.8.55\",\"_prism_lk\":\"{\\\"_qid\\\":\\\"\\\",\\\"_skey\\\":\\\"\\\"}\"}";
+        String appKey = "12574478";
+        String time = "1497278968824";
 
-        new AliHotelsItem().parser(null,null,taskEntity);
+        String sign = item.sign("0ed3989e5183741995b96c9edff262f0",time,appKey,data);
+        System.out.println(sign);
+
+
+        JSONObject bean = new JSONObject();
+        bean.put("cityId","110100");
+        bean.put("checkInDay","2017-06-21");
+        bean.put("checkOutDay","2017-06-24");
+        bean.put("cityName","北京市");
+        bean.put("shopId","10077759");
+
+        TaskEntity taskEntity = new TaskEntity();
+        taskEntity.setChannelId(1);
+        taskEntity.setChannelName("阿里酒店");
+        taskEntity.setRegion("北京");
+        taskEntity.setSleep(1);
+        taskEntity.setUrl(bean.toJSONString());
+
+        item.parser(null,null,taskEntity);
     }
 }

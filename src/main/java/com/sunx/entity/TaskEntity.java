@@ -25,6 +25,9 @@ public class TaskEntity {
     //入住日期
     @Row(field = "check_in_date")
     private String checkInDate;
+    //离开时间
+    @Row(field = "check_out_date")
+    private String checkOutDate;
     //入住晚数
     private Integer sleep;
     //成人数
@@ -229,5 +232,41 @@ public class TaskEntity {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setChannelId(Long channelId) {
+        this.channelId = channelId;
+    }
+
+    public String getCheckOutDate() {
+        return checkOutDate;
+    }
+
+    public void setCheckOutDate(String checkOutDate) {
+        this.checkOutDate = checkOutDate;
+    }
+
+    public void setSleep(Integer sleep) {
+        this.sleep = sleep;
+    }
+
+    public void setAdultNum(Integer adultNum) {
+        this.adultNum = adultNum;
+    }
+
+    public void setChildNum(Integer childNum) {
+        this.childNum = childNum;
+    }
+
+    public void setStatus(Integer status) {
+        this.status = status;
+    }
+
+    public void setTryTime(Integer tryTime) {
+        this.tryTime = tryTime;
     }
 }

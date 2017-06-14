@@ -9,16 +9,15 @@ import com.sunx.downloader.Downloader;
 import com.sunx.downloader.HttpClientDownloader;
 import com.sunx.downloader.Request;
 import com.sunx.downloader.Site;
+import com.sunx.entity.CNode;
 import com.sunx.entity.ResultEntity;
 import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
+import com.sunx.moudle.css.CssMode;
 import com.sunx.moudle.enums.ImageType;
 import com.sunx.moudle.js.ScriptManager;
-import com.sunx.moudle.proxy.IProxy;
-import com.sunx.moudle.proxy.ProxyManager;
 import com.sunx.moudle.template.Template;
-import com.sunx.parser.Node;
 import com.sunx.parser.Page;
 import com.sunx.storage.DBFactory;
 import com.sunx.utils.FileUtil;
@@ -36,8 +35,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 /**
  * 根据搜索的结果封装好的链接请求
@@ -68,14 +66,7 @@ public class QunarSearchItem implements IParser {
     private String script = null;
 
     //css解析类
-    private CssParse cssParse = new CssParse();
-
-    //从css中抽取内容的正则
-    private Pattern clazzPattern = Pattern.compile("(?:i\\.)(.*?)(?:\\{)");
-    private Pattern leftPattern = Pattern.compile("(?:left:)(\\d+)(?:px)");
-    private Pattern translatePattern = Pattern.compile("(?:translate\\()(.*?)(?:[px|,])");
-
-    private Pattern indexPattern = Pattern.compile("(?:text-indent.*?)(\\d+\\.?(\\d+)?)(?:em)");
+    private CssMode cssParse = CssMode.me();
 
     private static final int DEFAULT_PRICE_ONE_KEY_WIDTH = 11;
 
@@ -104,7 +95,7 @@ public class QunarSearchItem implements IParser {
     public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
         /** 根据请求进行数据的解析 **/
         //第一步,请求网页源码,获取到解析酒店详情的基本数据
-        String page = loader(request.setUrl(HOTEL_URL + task.getUrl()),site);
+        String page = Helper.downlaoder(downloader,request.setUrl(HOTEL_URL + task.getUrl()),site);
         //对下载到的数据进行判定
         if(page == null || page.length() <= 0){
             logger.error("下载酒店详情网页源码失败.任务链接对象为:" + request.getUrl());
@@ -121,7 +112,7 @@ public class QunarSearchItem implements IParser {
         site.addHeader("accept-language","zh-CN,zh;q=0.8");
 
         //下载到网页源码后,需要进行房型数据的下载
-        String rooms = loader(request.setUrl(ROOM_TYPE_URL + "&" + task.getUrl()),site);
+        String rooms = Helper.downlaoder(downloader,request.setUrl(ROOM_TYPE_URL + "&" + task.getUrl()),site);
         //对下载到的数据进行判定
         if(rooms == null || rooms.length() <= 0){
             logger.error("下载房间数据源码失败.任务链接对象为:" + request.getUrl());
@@ -167,7 +158,7 @@ public class QunarSearchItem implements IParser {
                     String lowPrice = node.getString("lowPrice");
 
                     //找到房型以后,开始处理对应房型下的价格问题
-                    String price = loader(request.setUrl(PRICE_URL + "&" + task.getUrl() + "&room=" + name),site);
+                    String price = Helper.downlaoder(downloader,request.setUrl(PRICE_URL + "&" + task.getUrl() + "&room=" + name),site);
                     if(price == null)continue;
                     //开始处理这个价格对应的网页内容,格式化为json对象
                     JSONObject priceBean = JSON.parseObject(price);
@@ -176,7 +167,7 @@ public class QunarSearchItem implements IParser {
                     if(!priceDataBean.containsKey("price"))continue;
                     JSONArray priceArray = priceDataBean.getJSONArray("price");
                     //css解析结果
-                    Map<String,Css> cssMap = decode(data.getString("css"));
+                    Map<Integer,CNode> cssMap = decode(data.getString("css"));
                     //数据缓存
                     StringBuffer buff = new StringBuffer();
                     //开始对数组进行遍历处理
@@ -285,7 +276,7 @@ public class QunarSearchItem implements IParser {
             resultEntity.setPath(htmPath);
             resultEntity.setSleep(task.getSleep());
 
-            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+//            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -298,18 +289,12 @@ public class QunarSearchItem implements IParser {
      */
     public String removeTag(String html){
         try{
-            Document document = Jsoup.parse(html);
-            //删除正在加载提示标签
-            Elements eles = document.select(".room-loading");
-            eles.remove();
-            //删除js标签
-            Elements scripts = document.select("script");
-            scripts.remove();
-
-            //添加关键字,用于替换内容
-            Elements rooms = document.select(".room-list");
-            rooms.append("#ROOM_HTML");
-            return document.html();
+            logger.error(html);
+            Page page = Page.me().bind(html);
+            page.remove(".room-loading")
+                .remove("script")
+                .append(".room-list","#ROOM_HTML");
+            return page.html();
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -322,7 +307,7 @@ public class QunarSearchItem implements IParser {
      * @param cssMap
      * @return
      */
-    public String findPrice(String html,Map<String,Css> cssMap){
+    public String findPrice(String html,Map<Integer,CNode> cssMap){
         //解析Dom
         Page page = Page.me().bind(html);
         //抽取价格的位数
@@ -335,28 +320,22 @@ public class QunarSearchItem implements IParser {
 
         //解析价格的内容
         String[] tmps = new String[size];
-        //遍历借口,处理数据
-        Node node = page.$("i");
-        try{
-           for(int i=0;i < node.size();i++){
-               //获取class
-               String clzz = node.css(i,"","class");
-               //判断当前key是否在集合中
-               if(!cssMap.containsKey(clzz)){
-                   logger.info("直接过滤的数据:" + clzz);
-                   continue;
-               }
-               //对应的数值
-               String value = node.css(i,"");
-               //找到对应的index
-               int index = cssMap.get(clzz).index;
-               //如果index <= 0 || index > size,则丢弃掉这个内容
-               if(index <= 0 || index > size)continue;
-               //给数组添值
-               tmps[index - 1] = value;
-           }
-        }catch (Exception e){
-           e.printStackTrace();
+        //遍历处理数据
+        for(Map.Entry<Integer,CNode> entry : cssMap.entrySet()){
+            //下标位置
+            int index = entry.getKey();
+            //对下标进行判定
+            if(index <= 0 || index > size)continue;
+
+            //开始处理节点数据
+            CNode n = entry.getValue();
+            //css
+            String clazz = n.getClazz();
+            //获取文本内容
+            String txt = page.css("." + clazz);
+            if(txt == null || txt.length() <= 0)continue;
+            //给数组赋值
+            tmps[index - 1] = txt;
         }
         //开始处理价格
         source.append("<i>");
@@ -364,49 +343,6 @@ public class QunarSearchItem implements IParser {
         source.append("</i>");
         //返回html
         return source.toString();
-    }
-
-    /**
-     * 下载数据内容
-     * @param request
-     * @param site
-     * @return
-     */
-    public String loader(Request request,Site site){
-        String src = null;
-        try{
-            int j = 0;
-            while(j <= 3){
-                //获取代理
-                IProxy proxy = null;
-                int i = 0;
-                while(proxy == null || i < 5){
-                    proxy = ProxyManager.me().poll();
-                    if(proxy == null){
-                        i++;
-                        try{
-                            Thread.sleep(1000);
-                        }catch ( Exception e){
-                            e.printStackTrace();
-                        }
-                        continue;
-                    }
-                    break;
-                }
-                if(proxy == null){
-                    proxy = new IProxy();
-                }
-                src = downloader.downloader(request,site,proxy.getHost(),proxy.getPort());
-                if(src != null && proxy != null){
-                    ProxyManager.me().offer(proxy);
-                    break;
-                }
-                j++;
-            }
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return src;
     }
 
     /**
@@ -425,7 +361,7 @@ public class QunarSearchItem implements IParser {
     /**
      * 处理加密问题
      */
-    public Map<String,Css> decode(String css){
+    public Map<Integer,CNode> decode(String css){
         //解密结果数据
         StringBuffer str = new StringBuffer();
 
@@ -441,106 +377,7 @@ public class QunarSearchItem implements IParser {
         //开始处理结果
         String result = str.toString();
         //进行解析css
-        return cssParse.parse(result);
-    }
-
-    /**
-     * 处理css解析问题
-     */
-    public class CssParse{
-        /** 开始解析对应的内容 **/
-//        public Map<String,Css> parse(String str){
-//            Map<String,Css> cssMap = new HashMap<>();
-//            //检验数据
-//            if(str == null || str.length() <= 0)return cssMap;
-//            //开始处理数据
-//            String[] cssList = str.split("\n");
-//            if(cssList == null || cssList.length <= 0)return cssMap;
-//            for(String line : cssList){
-//                //暂时只处理针对特定class的css内容
-//                if(!line.contains(".qunar_mix span.price"))continue;
-//                //解析css
-//                //抽取clzz
-//                String clzz = find(line,clazzPattern,1) ;
-//                //抽取left
-//                String left = find(line,leftPattern,1);
-//                //抽取translate px
-//                String translate = find(line,translatePattern,1);
-//
-//                //检测抽取到的内容
-//                if(clzz == null || left == null || translate == null){
-//                    logger.error("解析css内容失败,请查看原因.对应的css为:" + line);
-//                    continue;
-//                }
-//                //格式化内容
-//                int l = Integer.parseInt(left);
-//                int t = Integer.parseInt(translate);
-//
-//                int index = (l + t) / DEFAULT_PRICE_ONE_KEY_WIDTH + 1;
-//
-//                //将数据插入到集合中
-//                cssMap.put(clzz,new Css(clzz,l,t,index));
-//            }
-//            return cssMap;
-//        }
-        //针对新的版本
-        //.qunar_mix span.price i.qm1f207865{text-indent: 1em; z-index:10; background:none;}
-        public Map<String,Css> parse(String str){
-            Map<String,Css> cssMap = new HashMap<>();
-            //检验数据
-            if(str == null || str.length() <= 0)return cssMap;
-            //开始处理数据
-            String[] cssList = str.split("\n");
-            if(cssList == null || cssList.length <= 0)return cssMap;
-            for(String line : cssList){
-                //暂时只处理针对特定class的css内容
-                if(!line.contains(".qunar_mix span.price"))continue;
-                //过滤掉隐藏起来的数据
-                if(line.contains("display"))continue;
-                //过滤掉缩小的数据
-                if(line.contains("line-height"))continue;
-                //解析css
-                //抽取clzz
-                String clzz = find(line,clazzPattern,1) ;
-                //抽取index
-                String index = find(line,indexPattern,1);
-
-                //检测抽取到的内容
-                if(clzz == null || index == null){
-                    logger.error("解析css内容失败,请查看原因.对应的css为:" + line);
-                    continue;
-                }
-                //格式化内容
-                int i = (int)(Float.parseFloat(index) * 2 + 1);
-
-                //将数据插入到集合中
-                cssMap.put(clzz,new Css(clzz,-1,-1,i));
-            }
-            return cssMap;
-        }
-    }
-
-    public String find(String str,Pattern pattern,int index){
-        Matcher matcher = pattern.matcher(str);
-        if(matcher.find())return matcher.group(index);
-        return null;
-    }
-
-    /**
-     * 用于存储css的结果数据
-     */
-    public class Css{
-        private String clzz;
-        private int left;
-        private int transform;
-        private int index;
-
-        public Css(String clazz,int left,int trasform,int index){
-            this.clzz = clazz;
-            this.left = left;
-            this.transform = trasform;
-            this.index = index;
-        }
+        return cssParse.mode(result);
     }
 
     /**
@@ -551,10 +388,10 @@ public class QunarSearchItem implements IParser {
         TaskEntity taskEntity = new TaskEntity();
         taskEntity.setChannelId(5);
         taskEntity.setChannelName("去哪儿");
-        taskEntity.setCheckInDate("2017-05-18");
+        taskEntity.setCheckInDate("2017-06-14");
         taskEntity.setRegion("三亚");
-        taskEntity.setSleep(5);
-        taskEntity.setUrl("seq=sanya_12418&checkInDate=2017-05-22&checkOutDate=2017-05-24");
+        taskEntity.setSleep(3);
+        taskEntity.setUrl("d=123&seq=sanya_12418&checkInDate=2017-06-14&checkOutDate=2017-06-17");
 
         new QunarSearchItem().parser(null,null,taskEntity);
     }

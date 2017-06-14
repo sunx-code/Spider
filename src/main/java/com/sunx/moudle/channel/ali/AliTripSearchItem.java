@@ -1,6 +1,12 @@
 package com.sunx.moudle.channel.ali;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.sunx.constant.Constant;
+import com.sunx.downloader.Downloader;
+import com.sunx.downloader.HttpClientDownloader;
+import com.sunx.downloader.Request;
+import com.sunx.downloader.Site;
 import com.sunx.entity.ResultEntity;
 import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
@@ -10,6 +16,7 @@ import com.sunx.moudle.dynamic.DriverManager;
 import com.sunx.moudle.enums.ImageType;
 import com.sunx.moudle.proxy.IProxy;
 import com.sunx.utils.FileUtil;
+import com.sunx.utils.Helper;
 import com.sunx.utils.TimerUtils;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.storage.DBFactory;
@@ -21,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -33,223 +41,228 @@ public class AliTripSearchItem implements IParser {
     //日志记录类
     private static final Logger logger = LoggerFactory.getLogger(AliTripSearchItem.class);
     //格式化日期
-    private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    private SimpleDateFormat fs = new SimpleDateFormat("yyyyMMdd");
+    private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+    //格式化日期数据
+    private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    //默认的token
+    private String h5_tk = "";//1f5ffe425695856baeba3403e9766c6a
+    private String h5_tk_enc = "";//ed4dcd762a714dacdd6e4268eb592bce
+    private String h5_tk_time = "" + System.currentTimeMillis();
+    //key
+    private String appkey = "12574478";
 
+    private Downloader downloader = new HttpClientDownloader();
+    private Site site = new Site();
+    private Request request = new Request();
+
+    private String DATA_STR = "{\"itemId\":\"ITEM_ID\",\"h5Version\":\"0.2.24\"}";
+    private String DATA_DETAIL_URL = "https://acs.m.taobao.com/h5/mtop.trip.traveldetailskip.detail.get/3.0?type=originaljsonp&callback=mtopjsonp1&api=mtop.trip.traveldetailskip.detail.get&v=3.0&data=DATA_STR&ttid=201300@travel_h5_3.1.0&appKey=12574478&t=TIME_CODE&sign=SIGN_CODE";
+
+    public AliTripSearchItem(){
+        //初始化请求头
+        site.addHeader("Accept","*/*");
+        site.addHeader("Accept-Encoding","gzip, deflate, sdch");
+        site.addHeader("Accept-Language","zh-CN,zh;q=0.8,en;q=0.6");
+        site.addHeader("User-Agent","Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36");
+        //设置保存cookie
+        site.setIsSave(true).setTimeOut(10000);
+    }
     /**
      * 开始解析数据
-     *
+     * https://acs.m.taobao.com/h5/mtop.trip.traveldetailskip.detail.get/3.0?type=originaljsonp&callback=mtopjsonp1
+     * &api=mtop.trip.traveldetailskip.detail.get&v=3.0&data=%7B%22itemId%22%3A%2240258420851%22%2C%22h5Version%22%3A%220.2.24%22%7D&ttid=201300@travel_h5_3.1.0
+     * &appKey=12574478&t=1497272601446&sign=fab2c9e2640e10f75f84ecbe59a71f15
      * @param driver
      * @param task
      */
     public int parser(DBFactory factory, RemoteWebDriver driver, TaskEntity task) {
-        //获取最大的日期
-        String max = fs.format(new Date(System.currentTimeMillis() + 86400l * 31 * 1000));
-        logger.info("max:" + max);
-        try {
-            //使用代理
-            IProxy proxy = DriverManager.me().useProxy(driver);
-            //开始抓取链接,记录日志...
-            logger.info("开始抓取数据,对应的链接地址为:" + task.getUrl() + "....");
-            driver.get(task.getUrl());
-            Wait.wait(driver, 10, 1, () -> true);
-            // ==========房型=============================
-            Map<String, WebElement> day_month_elements = new LinkedHashMap<>();
-            Map<String, WebElement> day_day_elements = new LinkedHashMap<>();
-            // ==========提取类型=============================
-            {
-                WebElement month_list_findElementByXPath = driver
-                        .findElementByXPath("//*[@id=\"J_PropCalendar\"]/div[1]/div[2]");
-                List<WebElement> month_list_elements = month_list_findElementByXPath
-                        .findElements(By.cssSelector(".J_MonthTab"));
-
-                WebElement date_wrap_findElementByXPath = driver
-                        .findElementByXPath("//*[@id=\"J_PropCalendar\"]/div[2]");
-
-                for (int i = 0, j = month_list_elements.size(); i < j && i < 2; i++) {
-                    WebElement month = month_list_elements.get(i);
-                    month.click();
-                    // ------------
-                    Wait.wait(driver, 1, 1, () -> true);
-                    // ------------
-                    List<WebElement> date_wrap_elements = date_wrap_findElementByXPath
-                            .findElements(By.cssSelector(".date-cell.J_DateCell.date-cell-active"));
-
-                    for (WebElement date_wrap_element : date_wrap_elements) {
-                        String day = date_wrap_element.getAttribute("data-datetime");
-
-                        //判断日期是否是我们需要的数据
-                        try {
-                            int cid = Integer.parseInt(day.replaceAll("-", ""));
-                            int maxDay = Integer.parseInt(max);
-                            //超过最大的日期,数据丢弃掉
-                            if (cid > maxDay) {
-                                System.out.println("当前日期超过需求范围,当前日期为:" + day);
-                                continue;
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-
-                        System.err.println(day);
-                        day_month_elements.put(day, month);
-                        day_day_elements.put(day, date_wrap_element);
-                    }
-                }
+        try{
+            //获取下载的网页内容
+            String src = getSrc(task);
+            if(src == null || src.length() <= 0)return -1;
+            if(src.contains("FAIL_SYS")){
+                logger.info(src);
+                h5_tk = "";
+                h5_tk_enc = "";
+                h5_tk_time = "";
+                return 0;
             }
-            Map<String, WebElement> housetype_elements = new LinkedHashMap<>();
-            {
-                WebElement housetype_findElementByXPath = driver
-                        .findElementByXPath("//*[@id=\"J_SkuWrap\"]/dd[1]/ul");
-                List<WebElement> housetype_findElements = housetype_findElementByXPath
-                        .findElements(By.cssSelector("li"));
-                for (WebElement housetype_ : housetype_findElements) {
-                    String housetype_text = housetype_.getText();
-                    System.err.println(housetype_text);
-                    housetype_elements.put(housetype_.getText(), housetype_);
-                }
-            }
-            // ==========人员类型=============================
-            Map<String, WebElement> peopletype_elements = new LinkedHashMap<>();
-            {
-                WebElement peopletype_findElementByXPath = driver
-                        .findElementByXPath("//*[@id=\"J_SkuWrap\"]/dd[2]/ul");
-                List<WebElement> peopletype_findElements = peopletype_findElementByXPath
-                        .findElements(By.cssSelector("li"));
-                for (WebElement peopletype_ : peopletype_findElements) {
-                    String peopletype_text = peopletype_.getText();
-                    System.err.println(peopletype_text);
-                    peopletype_elements.put(peopletype_text, peopletype_);
-                }
-            }
-            // ===================================
-            dealNew(driver, day_month_elements, day_day_elements, housetype_elements, peopletype_elements, task, factory);
-            //关闭当前窗口
-            driver.close();
-            return Constant.TASK_SUCESS;
-        } catch (Exception e) {
+            logger.info("下载数据完成,开始处理数据.....");
+            //格式化数据为json
+            JSONObject bean = JSON.parseObject(src);
+            if(bean == null)return Constant.TASK_FAIL;
+            JSONObject data = bean.getJSONObject("data");
+            //解析内容,并将相应的数据插入到数据库中
+            return toSnapshot(factory,task,data);
+        }catch (Exception e){
             e.printStackTrace();
-            return Constant.TASK_FAIL;
-        }finally{
-            //使用代理
-            DriverManager.me().removeProxy(driver);
         }
+        return Constant.TASK_FAIL;
     }
 
     /**
-     * 处理数据
-     *
-     * @param pageDriver
-     * @param day_month_elements
-     * @param day_day_elements
-     * @param housetype_elements
-     * @param peopletype_elements
+     * 生产快照文件
+     * @param factory
+     * @param task
+     * @param data
+     * @return
      */
-    private void dealNew(RemoteWebDriver pageDriver,
-                         Map<String, WebElement> day_month_elements,
-                         Map<String, WebElement> day_day_elements,
-                         Map<String, WebElement> housetype_elements,
-                         Map<String, WebElement> peopletype_elements,
-                         TaskEntity task,
-                         DBFactory factory) throws Exception {
+    public int toSnapshot(DBFactory factory,TaskEntity task,JSONObject data){
+        try{
+            logger.info("开始存储网页快照数据到数据库中....");
+            Date date = new Date();
+            String vday = fs.format(date);
+            String now = sdf.format(date);
+            String region = task.getRegion();
+            String id = vday + "," + task.getChannelName() + "," + region + "," + task.getUrl();
+            String md5 = MD5.md5(id);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        List<String> days = TimerUtils.initDay(sdf, Constant.CRAWLING_RANGE_DAYS);
+            String htmPath = FileUtil.createPageFile(now, task.getChannelName(), region, now, md5, ImageType.HTML);
+            FileUtils.writeStringToFile(new File(htmPath), data.toJSONString(), "GBK");
 
-        //遍历日期集合
-        for (String check_in_date : days) {
-            WebElement month_webElement = day_month_elements.get(check_in_date);
-            if (month_webElement == null) continue;
+            // ===================================
+            ResultEntity resultEntity = new ResultEntity();
+            resultEntity.setId(md5);
+            resultEntity.setCheckInDate(task.getCheckInDate().replaceAll("-",""));
+            resultEntity.setChannelName(task.getChannelName());
+            resultEntity.setHouseType(null);
+            resultEntity.setPeopleType(null);
+            resultEntity.setRegion(region);
+            resultEntity.setTid(task.getId());
+            resultEntity.setUrl(task.getUrl());
+            resultEntity.setVday(vday);
+            resultEntity.setPath(htmPath);
+            resultEntity.setSleep(task.getSleep());
 
-            String monthClz = month_webElement.getAttribute("class");
-            if (monthClz != null && !monthClz.contains("active-month")) {
-                month_webElement.click();
-            }
-            Wait.wait(pageDriver, 1, 1, () -> true);
-            WebElement day_element = day_day_elements.get(check_in_date);
-            //如果当前标签为未选中的状态,则执行点击
-            day_element.click();
+//            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+            return Constant.TASK_SUCESS;
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return Constant.TASK_FAIL;
+    }
 
-            for (Entry<String, WebElement> housetype_element : housetype_elements.entrySet()) {
-                String housetype = housetype_element.getKey();
-                WebElement houseType = housetype_element.getValue();
-                //处理动态人员类型的数据变动
-                String clz = houseType.getAttribute("class");
-                logger.info("获取到的房型标签的class为:" + clz + ",当前的入住日期为:" + check_in_date);
-                if (clz == null || clz.contains("disable")) {
-                    //如果为空,或则是不显示,则跳过这个选项
-                    logger.info("房型类型不可选,class = " + clz);
-                    continue;
-                } else {
-                    //如果当前标签为未选中的状态,则执行点击
-                    houseType.click();
+    /**
+     * 下载数据
+     * @param task
+     * @return
+     */
+    public String getSrc(TaskEntity task){
+        String page = null;
+        int index = 0;
+        while(index <= 2){
+            try {
+                if (h5_tk != null && h5_tk.length() > 0) {
+                    site.addHeader("Cookie", "_m_h5_tk=" + h5_tk + "_" + h5_tk_time + "; _m_h5_tk_enc=" + h5_tk_enc + ";");
                 }
+                String link = getUrl(task, h5_tk, appkey);
+                page = loader(downloader,request.setUrl(link), site);
+                if (page == null || page.length() <= 0) break;
+                if (page.contains("FAIL_SYS")) {
+                    //说明数据失败,需要重新抓取
+                    update(site);
+                    index++;
 
-                for (Entry<String, WebElement> peopletype_element : peopletype_elements.entrySet()) {
-                    String peopletype = peopletype_element.getKey();
-
-                    System.out.println("开始处理数据:" + task.getChannelName() + "\t" + housetype + "\t" + peopletype + "\t" + check_in_date + " ....");
-
-                    //处理动态人员类型的数据变动
-                    WebElement people = peopletype_element.getValue();
-                    String peopleClz = people.getAttribute("class");
-                    if (peopleClz == null || peopleClz.contains("disable")) {
-                        //如果为空,或则是不显示,则跳过这个选项
-                        System.out.println("人员类型不可选,class = " + peopleClz);
-                        continue;
-                    } else if (!peopleClz.contains("selected")) {
-                        //如果当前标签为未选中的状态,则执行点击
-                        people.click();
+                    try{
+                        Thread.sleep(1500);
+                    }catch (Exception e){
+                        e.printStackTrace();
                     }
-
-                    Wait.wait(pageDriver, 1, 1, () -> true);
-                    //截图保存数据
-                    save(factory, pageDriver, task, check_in_date, peopletype, housetype);
-                    //取消出行人群
-                    people.click();
+                    continue;
                 }
-                //取消房型的选择
-                houseType.click();
+                break;
+            }catch (Exception e){
+                e.printStackTrace();
             }
         }
+        //清晰网页源码
+        if(page != null){
+            page = page.replaceAll("mtopjsonp1\\(","")
+                       .replaceAll("}\\)","}");
+        }
+        return page;
     }
 
     /**
-     * @param driver
-     * @param check_in_date
-     * @param people
-     * @param house
-     * @throws Exception
+     * 下载数据内容
+     * @param request
+     * @param site
+     * @return
      */
-    private void save(DBFactory factory, RemoteWebDriver driver, TaskEntity task, String check_in_date, String people, String house) throws Exception {
-        Date date = new Date();
-        String vday = fs.format(date);
-        String now = sdf.format(date);
-        String region = "Unknown";
-        String id = vday + "," + task.getChannelName() + "," + region + "," + check_in_date + "," + task.getUrl() + "," + people + "," + house;
-        String md5 = MD5.md5(id);
-
-        byte[] screenshotAs = FileUtil.getScreenshot(driver);
-        String imgPath = FileUtil.createPageFile(vday, task.getChannelName(), region, check_in_date, md5, ImageType.PNG);
-        FileUtils.writeByteArrayToFile(new File(imgPath), screenshotAs);
-
-        String txtPath = FileUtil.createPageFile(vday, task.getChannelName(), region, check_in_date, md5, ImageType.TXT);
-        String pageSource = driver.getPageSource();
-        FileUtils.writeStringToFile(new File(txtPath), pageSource, "UTF8");
-
-        // ===================================
-        ResultEntity resultEntity = new ResultEntity();
-        resultEntity.setId(md5);
-        resultEntity.setCheckInDate(check_in_date);
-        resultEntity.setChannelName(task.getChannelName());
-        resultEntity.setHouseType(house);
-        resultEntity.setPeopleType(people);
-        resultEntity.setRegion(region);
-        resultEntity.setTid(task.getId());
-        resultEntity.setUrl(task.getUrl());
-        resultEntity.setVday(now);
-        resultEntity.setPath(txtPath);
-
-        factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+    public String loader(Downloader downloader,Request request, Site site){
+        String src = null;
+        int i = 0;
+        while(i < 3){
+            try{
+                src = Helper.downlaoder(downloader,request,site,false);
+                i++;
+                if(src == null || src.contains("<!DOCTYPE html>")){
+                    logger.error("下载失败,等待下次重试......");
+                    Thread.sleep(1500);
+                    continue;
+                }
+                break;
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+        return src;
     }
+
+    /**
+     * 更新页面数据
+     * @param site
+     */
+    public void update(Site site){
+        String tk = site.getCookie("_m_h5_tk");
+        if(tk == null)return;
+        String[] tmps = tk.split("_");
+        if(tmps == null || tmps.length != 2)return;
+        this.h5_tk = tmps[0];
+        this.h5_tk_time = tmps[1];
+        if(h5_tk_time == null || h5_tk_time.length() <= 0){
+            h5_tk_time = System.currentTimeMillis() + "";
+        }
+        //设置enc值
+        this.h5_tk_enc = site.getCookie("_m_h5_tk_enc");
+    }
+
+    /**
+     *
+     * @param task
+     * @return
+     */
+    public String getUrl(TaskEntity task,String h5_tk,String appkey) throws Exception{
+        String t = System.currentTimeMillis() + "";
+        String data = DATA_STR.replaceAll("ITEM_ID",task.getUrl());
+        String sign = sign(h5_tk,t,appkey,data);
+
+        return DATA_DETAIL_URL.replaceAll("DATA_STR",URLEncoder.encode(data,"utf-8")).replaceAll("TIME_CODE",t).replaceAll("SIGN_CODE",sign);
+    }
+
+    /**
+     * 根据一些特定的数据加密为相应的值
+     * @param h5_tk
+     * @param time
+     * @param appkey
+     * @param data
+     * @return
+     */
+    public String sign(String h5_tk,String time,String appkey,String data) throws Exception{
+        String str = h5_tk + "&" + time + "&" + appkey + "&" + data;
+        return com.sunx.utils.MD5.convert(str);
+    }
+
+
+    public static void main(String[] args){
+        TaskEntity taskEntity = new TaskEntity();
+        taskEntity.setId(123);
+        taskEntity.setUrl("40258420851");
+        taskEntity.setRegion(Constant.DEFALUT_REGION);
+        taskEntity.setChannelName("阿里旅行-旅游度假");
+        taskEntity.setChannelId(123);
+
+        new AliTripSearchItem().parser(null,null,taskEntity);
+    }
+
 }

@@ -57,7 +57,7 @@ public class QunarSearch implements IMonitor {
                     //离开时间
                     String end = TimerUtils.toDate(sdf, day, sleep);
 
-                    String link = url + "&checkInDate=" + day + "&checkOutDate=" + end;
+                    String link = "d=123&" + url + "&checkInDate=" + day + "&checkOutDate=" + end;
                     logger.info("去哪儿抽取到的数据为：" + link);
                     //封装结果数据
                     TaskEntity taskEntity = new TaskEntity();

@@ -1,5 +1,6 @@
 package com.sunx.moudle.channel.ali;
 
+import com.alibaba.fastjson.JSONObject;
 import com.sunx.constant.Constant;
 import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.channel.IMonitor;
@@ -28,13 +29,6 @@ public class AliHotels implements IMonitor {
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    //数据格式
-    private String data = "{\"filterByPayment\":\"0\",\"cityCode\":\"CITY_CODE\",\"checkIn\":\"CHECK_IN_DATA\",\"checkOut\":\"CHECK_OUT_DATA\",\"guid\":\"\",\"from\":\"hotel-list-page\",\"surroundingByHotel\":\"0\",\"adultNum\":\"2\",\"wirelessStraightField\":\"{\\\"searchId\\\":\\\"\\\"}\",\"hid\":\"0\",\"cityName\":\"CITY_NAME\",\"shid\":\"SHOP_ID\",\"spm\":\"\",\"ttid\":\"201300@travel_h5_3.1.0\",\"_preProjVer\":\"0.8.40\",\"_projVer\":\"0.8.40\",\"isIncludePayLater\":0,\"needDeal\":1,\"childrenAges\":\"\",\"isShowExpedia\":1,\"supportPCI\":1,\"sversion\":7,\"displayPackage\":1,\"hidden\":\"{\\\"straight_field\\\":{\\\"searchId\\\":\\\"\\\"}}\",\"h5Version\":\"0.8.40\"}";
-    //CITY_CODE
-    //CHECK_IN_DATA
-    //CHECK_OUT_DATA
-    //CITY_NAME
-    //SHOP_ID
 
     /**
      * 抓取种子数据
@@ -64,11 +58,14 @@ public class AliHotels implements IMonitor {
                     //离开时间
                     String end = TimerUtils.toDate(sdf, day, sleep);
 
-                    String link = data.replaceAll("CITY_CODE",tmps[0])
-                                      .replaceAll("CHECK_IN_DATA",day)
-                                      .replaceAll("CHECK_OUT_DATA",end)
-                                      .replaceAll("CITY_NAME",region)
-                                      .replaceAll("SHOP_ID",tmps[1]);
+                    JSONObject bean = new JSONObject();
+                    bean.put("cityId",tmps[0]);
+                    bean.put("checkInDay",day);
+                    bean.put("checkOutDay",end);
+                    bean.put("cityName",region);
+                    bean.put("shopId",tmps[1]);
+
+                    String link = bean.toJSONString();
                     logger.info("阿里酒店抽取到的数据为：" + link);
                     //
                     //封装结果数据
@@ -80,7 +77,6 @@ public class AliHotels implements IMonitor {
                     taskEntity.setCreateAt(fs.format(new Date()));
                     taskEntity.setStatus(Constant.TASK_NEW);
                     taskEntity.setSleep(sleep);
-                    taskEntity.setRegion(region);
                     taskEntity.setCheckInDate(day.replaceAll("-",""));
 
                     tasks.add(taskEntity);
@@ -95,5 +91,4 @@ public class AliHotels implements IMonitor {
         }
         factory.insert(Constant.DEFAULT_DB_POOL,tasks);
     }
-
 }

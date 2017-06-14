@@ -39,7 +39,7 @@ public class WebService {
 		server.setStopAtShutdown(true);
 		// -------------------------------
 		ServerConnector connector = new ServerConnector(server);
-		connector.setPort(Configuration.me().getInt("web.port"));
+		connector.setPort(Configuration.me().getInt("web.port") -99);
 		connector.setReuseAddress(false);
 		server.setConnectors(new Connector[] { connector });
 

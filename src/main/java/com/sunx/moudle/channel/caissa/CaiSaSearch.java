@@ -12,6 +12,7 @@ import com.sunx.downloader.Site;
 import com.sunx.parser.Node;
 import com.sunx.parser.Page;
 import com.sunx.storage.DBFactory;
+import com.sunx.utils.Helper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,15 @@ public class CaiSaSearch implements IMonitor {
     private String DETAIL_URL = "http://dj.caissa.com.cn/reserve/reserve.php?pro_id=PRO_ID&pid=P_ID&nomal=NOMAL_DATA&_type=&child=1&adults=ADULT_NUM&childrens=CHILD_TYPE&ages=0-11&kc=999&presaleNum=&last_time=LAST_DATE&last_p=2&start_date=CTRIP_DATE";
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    //格式化日期数据
+    private SimpleDateFormat month = new SimpleDateFormat("yyyy-MM");
+
+    public CaiSaSearch(){
+        site.addHeader("User-Agent","Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36");
+        site.addHeader("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        site.addHeader("Accept-Encoding","gzip, deflate, sdch");
+        site.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+    }
 
     /**
      * 抓取种子数据
@@ -56,16 +66,15 @@ public class CaiSaSearch implements IMonitor {
      * @param name      渠道名称
      */
     public void monitor(DBFactory factory, Long id, String name) {
-        //初始化站点,绑定请求头
-        initSite();
-
+        //格式化月份
+        String mon = month.format(new Date());
         //遍历关键字进行数据处理
         for(String word : words){
             //拼接请求连接地址
             String link = SEARCH_URL.replaceAll("KEY_WORD",word);
 
             //开始处理当前这个页面的数据
-            dealData(factory,id,name,link);
+            dealData(factory,id,name,link,mon);
         }
     }
 
@@ -76,10 +85,10 @@ public class CaiSaSearch implements IMonitor {
      * @param name
      * @param link
      */
-    private void dealData(DBFactory factory, Long id, String name,String link){
+    private void dealData(DBFactory factory, Long id, String name,String link,String nomal){
         try{
             //请求结果数据
-            String src = downloader.downloader(request.setUrl(link),site);
+            String src = Helper.downlaoder(downloader,request.setUrl(link),site.setTimeOut(10000),false);
             if(src == null || src.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + link);
                 return;
@@ -105,7 +114,7 @@ public class CaiSaSearch implements IMonitor {
                 logger.info("凯撒搜索抽取到的数据为:" + title + "\t" + href);
 
                 //开始进行后续的处理
-                dealDetailData(factory,id,name,title,href);
+                dealDetailData(factory,id,name,title,href,nomal);
 
                 //线程休眠一定时间后继续
                 try{
@@ -137,19 +146,21 @@ public class CaiSaSearch implements IMonitor {
      * @param title
      * @param href
      */
-    private void dealDetailData(DBFactory factory, Long id, String name,String title,String href){
+    private void dealDetailData(DBFactory factory, Long id, String name,String title,String href,String nomal){
         try{
             //请求结果数据
-            String src = downloader.downloader(request.setUrl(href),site);
+            String src = Helper.downlaoder(downloader,request.setUrl(href),site.setTimeOut(10000),false);
             if(src == null || src.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + href);
                 return;
             }
             Page page = Page.me().bind(src);
             //开始抽取相应的数据
-            String proId = page.css("#J_Calendar","pro_id");
-            String pid = page.css("#pid","value");
-            String nomal = page.css("#J_Calendar","nomal");
+            String proId = page.css("input[name=pro_id]","value");
+            if(proId == null || proId.length() <= 0){
+                proId = page.css("[pro_id]","pro_id");
+            }
+            String pid = page.css("input[name=pid]","value");
 
             //对抽取到的数据进行判定
             if(proId == null || proId.length() <= 0){
@@ -158,7 +169,7 @@ public class CaiSaSearch implements IMonitor {
             }
             //加载ajax请求,获取json数据,并封装对应的数据
             String jsonUrl = AJAX_URL + proId;
-            String json = downloader.downloader(request.setUrl(jsonUrl),site);
+            String json = Helper.downlaoder(downloader,request.setUrl(jsonUrl),site.setTimeOut(10000),false);
             if(src == null || src.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + jsonUrl);
                 return;
@@ -251,14 +262,14 @@ public class CaiSaSearch implements IMonitor {
             enqueue(tasks,proId,pid,nomal,lastDate,ctripDate,id,name,title,2,0,"2成人");
 
             //数据容量是否已经超出上限
-            if(tasks.size() > 1000){
-                factory.insert(Constant.DEFAULT_DB_POOL,tasks);
-
-                tasks.clear();
-            }
+//            if(tasks.size() > 1000){
+//                factory.insert(Constant.DEFAULT_DB_POOL,tasks);
+//
+//                tasks.clear();
+//            }
         }
         //将最后一批数据提交到数据库中
-        factory.insert(Constant.DEFAULT_DB_POOL,tasks);
+//        factory.insert(Constant.DEFAULT_DB_POOL,tasks);
     }
 
     /**
@@ -279,7 +290,7 @@ public class CaiSaSearch implements IMonitor {
                                .replaceAll("LAST_DATE", lastDate)
                                .replaceAll("CTRIP_DATE",ctripDate);
         //封装好的链接为：
-        logger.info("凯撒抽取的数据封装好的链接为:" + url);
+//        logger.info("凯撒抽取的数据封装好的链接为:" + url);
         //将封装好的链接插入到文件队列中
         TaskEntity taskEntity = new TaskEntity();
         taskEntity.setUrl(url);
@@ -297,14 +308,13 @@ public class CaiSaSearch implements IMonitor {
         taskEntity.setRegion(Constant.DEFALUT_REGION);
 
         tasks.add(taskEntity);
+
+        logger.info("-> " + url + "," + ctripDate + "," + adultNum + "," + childNum + "," + peopleType);
     }
-    /**
-     * 绑定站点请求
-     */
-    private void initSite(){
-        site.addHeader("User-Agent","Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/52.0.2743.116 Safari/537.36");
-        site.addHeader("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
-        site.addHeader("Accept-Encoding","gzip, deflate, sdch");
-        site.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+
+    public static  void main(String[] args){
+        CaiSaSearch search = new CaiSaSearch();
+
+        search.monitor(null,14l,"凯撒");
     }
 }

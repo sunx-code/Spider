@@ -1,0 +1,81 @@
+<div class="book_title" style="position: relative; top: 0px; z-index: 1; width: 944px; border-width: 0px 0px 1px; border-style: solid; border-color: rgb(255, 222, 183); border-image: initial; margin-left: 0px;">
+    <p class="book_title_cell book_time">
+        <span class="title_text">出游时间</span>
+    </p>
+    <div class="book_title_cell select_box">
+        <div class="J-departDate search-ctrl-inp">
+            <span class="">#CHECK_IN_DAY</span>
+            <i class="icon"></i>
+        </div>
+    </div>
+    <p class="book_title_cell">
+        <span class="title_text">成人</span>
+        <select name="" class="num_select adult_num">
+            <option value="" selected="selected">
+                #ADULT_NUM
+            </option>
+        </select>
+    </p>
+    <p class="book_title_cell">
+        <span class="title_text">儿童</span>
+        <select name="" class="num_select child_num">
+            <option value="" selected="selected">
+                #CHILD_NUM
+            </option>
+        </select>
+        <i class="child_tips icon_tips">
+        </i>
+    </p>
+    <div class="book_title_cell book_price_bar">
+        <span class="title_text">总价：</span>
+        <span class="price_dollar">￥</span>
+        <span class="price_num">#TOTAL_PRICE</span>
+    </div>
+    <p class="book_title_cell submit_btn">立即预订</p>
+</div>
+<div class="book_resource">
+    <div class="resource_block hide" id="hotel_box" style="display: block;">
+        <div>
+            <p class="resource_title">
+                <span class="resource_icon resource_hotel_icon"></span>
+                <span class="resource_name">酒店</span>
+                <span class="T_journey">#REGION#SLEEP_DAY晚
+                      <span class="T_date">(#CHECK_IN_DAY入住，#CHECK_OUT_DAY退房)</span>
+                </span>
+                <span class="J_hotelTips"></span>
+            </p>
+            <div class="T_hotel">
+                <div class="T_left"><img src="#"></div>
+                <div class="T_middle">
+                    <h4 class="T_name">#HOTEL_NAME</h4>
+                    <div class="T_facility"></div>
+                    <div class="T_address">#HOTEL_ADDRESS</div>
+                    <div class="current-plan">
+                        <span class="current-room-type" title="">#SELEC_ROOM_TITLE</span>
+                        <span class="current-room-info" title="">#SELECT_ROOM_DESC</span>
+                        <span class="current-room-count J_roomCount">
+                              <select data-roomid="">
+                                      <option selected="">#SELECT_ROOME_NUM</option>
+                              </select>间
+                        </span>
+                    </div>
+                </div>
+                <div class="T_right"><a href="#">更换酒店</a></div>
+            </div>
+            <div class="T_room  ">
+                <div class="T_head">
+                    <span class="T_room_type">房型</span>
+                    <span class="T_bed_type">床型</span>
+                    <span class="T_breakfast">早餐</span>
+                    <span class="T_network">宽带</span>
+                    <span class="T_room_count">间数</span>
+                    <span class="T_price">差价</span>
+                    <span class="T_select"></span>
+                </div>
+                <div class="T_main">
+                    #ROOM_LIST
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -54,7 +54,7 @@ public class ProxyManager {
      * @param proxy
      */
     public void offer(IProxy proxy){
-        if(proxy == null)return;
+        if(proxy != null || proxy.getHost() == null)return;
         this.queue.offer(proxy);
     }
 
