@@ -260,7 +260,7 @@ public class AliHotelsItem  implements IParser {
             resultEntity.setPath(htmPath);
             resultEntity.setSleep(task.getSleep());
 
-//            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
             return 1;
         }catch (Exception e){
             e.printStackTrace();

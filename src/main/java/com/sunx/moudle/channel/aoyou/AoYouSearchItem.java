@@ -33,7 +33,7 @@ import java.util.Map;
 /**
  * 遨游的数据采集
  */
-@Service(id = 14, service = "com.fosun.fonova.moudle.channel.aoyou.AoYouSearchItem")
+@Service(id = 9, service = "com.fosun.fonova.moudle.channel.aoyou.AoYouSearchItem")
 public class AoYouSearchItem implements IParser {
     //日志记录类
     private static final Logger logger = LoggerFactory.getLogger(AoYouSearchItem.class);
@@ -285,7 +285,7 @@ public class AoYouSearchItem implements IParser {
             resultEntity.setSleep(task.getSleep());
             //价格
 
-//            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         }catch (Exception e){
             e.printStackTrace();
         }
