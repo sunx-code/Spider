@@ -41,10 +41,10 @@ public class WowoYooSearchItem implements IParser {
     /**
      * 开始解析数据
      *
-     * @param pageDriver
+     * @param factory
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         //第一步,拼接请求参数
         Map<String,String> map = new HashMap<>();
         map.put("area",task.getRegion());
@@ -64,10 +64,10 @@ public class WowoYooSearchItem implements IParser {
         //访问地点的首页数据
         String src = downloader.downloader(request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),site.setTimeOut(10000));
         //找到相应的位置,进行填写数据后模拟点击
-        return dealData(src,factory,pageDriver,task);
+        return dealData(src,factory,task);
     }
 
-    private int dealData(String src,DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
+    private int dealData(String src,DBFactory factory,TaskEntity task) {
         //对数据进行判定
         if(src == null || src.length() <= 0){
             logger.error("下载出现错误,地区：" + task.getRegion() +",成人数:" + task.getAdultNum() +",类型:" + task.getPeopleType() + ",入住日期:" + task.getCheckInDate());
@@ -145,6 +145,6 @@ public class WowoYooSearchItem implements IParser {
         taskEntity.setSleep(2);
         taskEntity.setUrl("https://wowoyoo.com/clubmed/cau");
 
-        new WowoYooSearchItem().parser(null,null,taskEntity);
+        new WowoYooSearchItem().parser(null,taskEntity);
     }
 }

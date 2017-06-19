@@ -2,7 +2,6 @@ package com.sunx.moudle.channel;
 
 import com.sunx.entity.TaskEntity;
 import com.sunx.storage.DBFactory;
-import org.openqa.selenium.remote.RemoteWebDriver;
 
 /**
  * 解析接口
@@ -13,5 +12,5 @@ public interface IParser {
     /**
      * 解析接口
      */
-    public int parser(DBFactory factory, RemoteWebDriver driver, TaskEntity task);
+    public int parser(DBFactory factory,TaskEntity task);
 }

@@ -54,10 +54,11 @@ public class ClubMedExecutableItem implements IParser {
     /**
      * 开始解析数据
      *
-     * @param pageDriver
+     * @param factory
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
+    public int parser(DBFactory factory,  TaskEntity task) {
+        RemoteWebDriver pageDriver = null;
         try {
             pageDriver.get(task.getUrl());
             Wait.wait(pageDriver, 20, 20, () ->true);

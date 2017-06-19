@@ -10,7 +10,7 @@ import org.openqa.selenium.WebDriver;
  */
 public class WebDriverPool {
     //webdriver对象池
-    private GenericObjectPool<WebDriver> pool = null;
+    private static GenericObjectPool<WebDriver> pool = initPool();
     //构造单利对象
     private static class SingleClass{
         private static WebDriverPool driverPool = new WebDriverPool();
@@ -21,21 +21,14 @@ public class WebDriverPool {
      * @return
      */
     public static WebDriverPool me(){
-        return new WebDriverPool();
-    }
-
-    /**
-     * 构造函数初始化对象池
-     */
-    private WebDriverPool(){
-        pool = initPool();
+        return SingleClass.driverPool;
     }
 
     /**
      * 构造对象池
      * @return
      */
-    private GenericObjectPool<WebDriver> initPool(){
+    private static GenericObjectPool<WebDriver> initPool(){
 		//对象工厂
 		WebDriverFactory factory = new WebDriverFactory();
 		GenericObjectPoolConfig config = new GenericObjectPoolConfig();
@@ -43,8 +36,7 @@ public class WebDriverPool {
         config.setMaxWaitMillis(1000); //获取不到永远不等待
         config.setTimeBetweenEvictionRunsMillis(5 * 60 * 1000L);
         config.setMinEvictableIdleTimeMillis(10 * 6000L);
-        GenericObjectPool<WebDriver>  pool = new GenericObjectPool<>(factory, config);
-		return pool;
+        return new GenericObjectPool<>(factory, config);
 	}
 
     /**
@@ -64,6 +56,7 @@ public class WebDriverPool {
      * @param driver
      */
     public void recycle(WebDriver driver){
+        if(driver == null)return;
         pool.returnObject(driver);
     }
     /**

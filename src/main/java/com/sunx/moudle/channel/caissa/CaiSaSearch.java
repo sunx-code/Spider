@@ -262,14 +262,14 @@ public class CaiSaSearch implements IMonitor {
             enqueue(tasks,proId,pid,nomal,lastDate,ctripDate,id,name,title,2,0,"2成人");
 
             //数据容量是否已经超出上限
-//            if(tasks.size() > 1000){
-//                factory.insert(Constant.DEFAULT_DB_POOL,tasks);
-//
-//                tasks.clear();
-//            }
+            if(tasks.size() > 1000){
+                factory.insert(Constant.DEFAULT_DB_POOL,tasks);
+
+                tasks.clear();
+            }
         }
         //将最后一批数据提交到数据库中
-//        factory.insert(Constant.DEFAULT_DB_POOL,tasks);
+        factory.insert(Constant.DEFAULT_DB_POOL,tasks);
     }
 
     /**

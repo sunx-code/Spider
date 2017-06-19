@@ -10,6 +10,7 @@ import com.sunx.storage.DBConfig;
 import com.sunx.storage.DBFactory;
 import com.sunx.storage.DBUtils;
 import com.sunx.storage.pool.DuridPool;
+import javafx.concurrent.Task;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,19 +35,17 @@ public class Spider {
     //绑定数据库链接处理对象
     private DBFactory factory = null;
     //缓存集合,用于存储待抓取的数据
-    private List<TaskEntity> queue = new ArrayList<>();
+    private Map<Long,List<TaskEntity>> queue = new HashMap<>();
     //缓存验证重复数据
     private Set<Long> cache = new HashSet<>();
     //缓存的最大大小
-    private int QUEUE_MAX_SIZE = 1000;
+    private int QUEUE_MAX_SIZE = 500;
     //缓存最小值,小于这个值会添加数据
-    private int QUEUE_MIN_SIZE = 100;
+    private int QUEUE_MIN_SIZE = 50;
     //缓存数据添加时间间隔
     private int QUEUE_ADD_DURATION = 10000;
     //最小时间间隔
     private int MAX_DURATION = 10000;
-    //启动线程数
-    private int THREAD_SIZE = 1;
     //线程锁
     private Lock lock = new ReentrantLock();
     //基础类包
@@ -67,9 +66,8 @@ public class Spider {
         //启动爬虫
         Spider.me()
               .bind(DBFactory.me())
-              .num()
-              .queue()
               .scan()
+              .queue()
               .start();
     }
 
@@ -88,18 +86,6 @@ public class Spider {
      */
     public Spider bind(DBFactory factory){
         this.factory = factory;
-        return this;
-    }
-
-    /**
-     * 设置线程数
-     * @return
-     */
-    public Spider num(){
-        int num = Configuration.me().getInt("thread.num");
-        if(num > 0){
-            THREAD_SIZE = num;
-        }
         return this;
     }
 
@@ -123,8 +109,24 @@ public class Spider {
             while(true){
                 try{
                     logger.info("开始判断缓存是否需要添加数据...");
-                    if(queue.size() <= QUEUE_MIN_SIZE){
-                        init();
+                    try{
+                        lock.lock();
+                        for(Map.Entry<Long,Object> entry : clMap.entrySet()){
+                            //渠道id
+                            long cid = entry.getKey();
+
+                            //将任务添加到集合中
+                            if(!queue.containsKey(cid)){
+                                queue.put(cid,new ArrayList<>());
+                            }
+                            //当前渠道对应的任务数
+                            int count = queue.get(cid).size();
+                            if(count <= QUEUE_MIN_SIZE){
+                                init(cid);
+                            }
+                        }
+                    }finally {
+                        lock.unlock();
                     }
                     Thread.sleep(QUEUE_ADD_DURATION);
                 }catch (Exception e){
@@ -137,25 +139,27 @@ public class Spider {
     /**
      * 初始化缓存
      */
-    private void init() throws Exception {
-        TaskEntity taskEntity = new TaskEntity();
-        taskEntity.setStatus(Constant.TASK_NEW);
-        logger.info("缓存需要添加新的数据,现在开始从数据库中拉去新的数据添加到集合中...");
-        List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,taskEntity);
-        if(tasks == null){
-            logger.error("数据拉去异常...");
-            throw new Exception("从数据库中拉去数据异常...");
-        }
+    private void init(long cid) throws Exception {
         try{
             lock.lock();
+            TaskEntity taskEntity = new TaskEntity();
+            taskEntity.setStatus(Constant.TASK_NEW);
+            taskEntity.setChannelId(cid);
+            logger.info("缓存需要添加新的数据,现在开始从数据库中拉去新的数据添加到集合中...");
+            List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,taskEntity);
+            if(tasks == null){
+                logger.error("数据拉去为空...");
+                return;
+            }
+
             //遍历集合,将数据添加到队列中
             for(TaskEntity task : tasks){
                 if(cache.add(task.getId())){
-                    queue.add(task);
+                    queue.get(cid).add(task);
                 }
-                if(queue.size() >= QUEUE_MAX_SIZE)break;
+                if(queue.get(cid).size() >= QUEUE_MAX_SIZE)break;
             }
-            logger.info("当前缓存的大小为:" + queue.size());
+            logger.info("当前渠道id:" + cid + "对应的缓存大小为:" + queue.get(cid).size());
         }catch (Exception e){
             e.printStackTrace();
         }finally{
@@ -167,9 +171,9 @@ public class Spider {
      * 启动爬虫
      */
     public void start(){
-        ExecutorService service = Executors.newFixedThreadPool(THREAD_SIZE);
-        for(int i=0;i<THREAD_SIZE;i++){
-            service.submit(new Execute());
+        ExecutorService service = Executors.newFixedThreadPool(clMap.size());
+        for(Map.Entry<Long,Object> entry : clMap.entrySet()){
+            service.submit(new Execute(entry.getKey(),entry.getValue()));
         }
     }
 
@@ -199,7 +203,6 @@ public class Spider {
                 deal(IParser.class,packageName, files);
             }else{
                 String filePath = current.getFile().replaceAll("!/"+ path, "").replaceAll("file:","");
-                System.out.println(filePath);
                 deal(IParser.class,new JarFile(filePath),path);
             }
         }catch (Exception e){
@@ -246,7 +249,7 @@ public class Spider {
                 try{
                     clMap.put(service.id(),child.newInstance());
 
-                    System.out.println(service.id() + " --> " + child.getCanonicalName());
+                    logger.info(service.id() + " --> " + child.getCanonicalName());
                 }catch (Exception e){
                     e.printStackTrace();
                 }
@@ -287,30 +290,37 @@ public class Spider {
      * 数据处理线程
      */
     private class Execute implements Runnable{
+        private long cid;
+        private Object bean;
+
+        private Method method;
+
+        public Execute(long cid,Object bean){
+            this.cid  = cid;
+            this.bean = bean;
+
+             try{
+                 method = bean.getClass().getMethod("parser",DBFactory.class,TaskEntity.class);
+             }catch (Exception e){
+                 e.printStackTrace();
+             }
+        }
+
         @Override
         public void run() {
             while(true){
                 //从缓存中读取一个任务对象
                 TaskEntity task = null;
-                RemoteWebDriver driver = null;
                 try{
                     logger.info("开始从队列中获取任务...");
-                    task = get();
+                    task = get(cid);
                     if(task == null){
                         logger.info("当前任务队列中任务为空,需要的等待...");
                         Thread.sleep(3000);
                         continue;
                     }
-                    //开始处理数据
-                    if(!clMap.containsKey(task.getChannelId())){
-                        throw new Exception("当前渠道没有对应的解析类,渠道对应的id为:" + task.getChannelId() + ",任务名称为:" + task.getId());
-                    }
-                    //获取解析类
-                    Object bean = clMap.get(task.getChannelId());
-                    //获取指定方法
-                    Method method = bean.getClass().getMethod("parser",DBFactory.class,RemoteWebDriver.class,TaskEntity.class);
                     //开始执行数据处理
-                    Integer status = (Integer)method.invoke(bean,factory,driver,task);
+                    Integer status = (Integer)method.invoke(bean,factory,task);
                     //更新任务为成功状态
                     factory.update(Constant.DEFAULT_DB_POOL, DBUtils.table(task),
                             new String[]{"status"},
@@ -332,10 +342,6 @@ public class Spider {
                                 new Object[]{task.getId()});
                     }
                 }finally{
-                    //回收对象
-                    if(driver != null){
-                        WebDriverPool.me().recycle(driver);
-                    }
                     //删除缓存中保留的对象id
                     if(task != null){
                         remove(task.getId());
@@ -354,7 +360,7 @@ public class Spider {
             }
             long sleep = MAX_DURATION - (System.currentTimeMillis() - durations.get(task.getChannelId()));
 
-            System.err.println(Thread.currentThread().getName() + "\t" + sleep + "\t" + durations.get(task.getChannelId()) + "\t" + System.currentTimeMillis());
+            logger.info(Thread.currentThread().getName() + "\t" + sleep + "\t" + durations.get(task.getChannelId()) + "\t" + System.currentTimeMillis());
 
             durations.put(task.getChannelId(), System.currentTimeMillis());
             return sleep;
@@ -367,15 +373,17 @@ public class Spider {
      * 从队列中读取一个数据
      * @return
      */
-    private TaskEntity get(){
+    private TaskEntity get(long cid){
         try{
             lock.lock();
-            if(queue.isEmpty())return null;
+            if(!queue.containsKey(cid))return null;
+            List<TaskEntity> tasks = queue.get(cid);
+            if(tasks == null || tasks.size() <= 0)return null;
             logger.info("获取任务完成,开始处理任务...");
-            TaskEntity task = queue.remove(0);
+            TaskEntity task = tasks.remove(0);
             long sleep = sleepTime(task);
             if(sleep > 0){
-                System.out.println("现场休眠" + sleep + "ms后继续....");
+                logger.info("现场休眠" + sleep + "ms后继续....");
                 Thread.sleep(sleep);
             }
             return task;

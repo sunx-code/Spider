@@ -64,10 +64,10 @@ public class AoYouSearchItem implements IParser {
     /**
      * 开始解析数据
      *
-     * @param driver
+     * @param factory
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver driver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         try{
             logger.info("开始处理数据:" + task.getUrl());
             //请求页面数据
@@ -245,6 +245,7 @@ public class AoYouSearchItem implements IParser {
             .replace(".ft_price font",price + "")
             .replace(".ft_calculate font",price + "")
             .replace("div.base_price strong",price + "")
+            .attr("#info_travel_data","style","width:230px;")
             .attr(".submit_btn","style","background-color: rgb(255, 102, 0);")
             .replace("#pricetype",html)
             ;
@@ -306,6 +307,6 @@ public class AoYouSearchItem implements IParser {
         taskEntity.setCheckOutDate("2017-06-26");
 
         AoYouSearchItem item = new AoYouSearchItem();
-        item.parser(null,null,taskEntity);
+        item.parser(null,taskEntity);
     }
 }

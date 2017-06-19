@@ -23,10 +23,6 @@ import com.sunx.storage.DBFactory;
 import com.sunx.utils.FileUtil;
 import com.sunx.utils.Helper;
 import org.apache.commons.io.FileUtils;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.select.Elements;
-import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,10 +85,10 @@ public class QunarSearchItem implements IParser {
     /**
      * 开始解析数据
      *
-     * @param pageDriver
+     * @param factory
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         /** 根据请求进行数据的解析 **/
         //第一步,请求网页源码,获取到解析酒店详情的基本数据
         String page = Helper.downlaoder(downloader,request.setUrl(HOTEL_URL + task.getUrl()),site);
@@ -107,10 +103,7 @@ public class QunarSearchItem implements IParser {
             e.printStackTrace();
         }
         //修改请求头
-        site.addHeader("accept","application/json");
-        site.addHeader("referer",request.getUrl());
-        site.addHeader("accept-language","zh-CN,zh;q=0.8");
-
+        site.addHeader("Referer",request.getUrl());
         //下载到网页源码后,需要进行房型数据的下载
         String rooms = Helper.downlaoder(downloader,request.setUrl(ROOM_TYPE_URL + "&" + task.getUrl()),site);
         //对下载到的数据进行判定
@@ -289,7 +282,6 @@ public class QunarSearchItem implements IParser {
      */
     public String removeTag(String html){
         try{
-            logger.error(html);
             Page page = Page.me().bind(html);
             page.remove(".room-loading")
                 .remove("script")
@@ -388,11 +380,11 @@ public class QunarSearchItem implements IParser {
         TaskEntity taskEntity = new TaskEntity();
         taskEntity.setChannelId(5);
         taskEntity.setChannelName("去哪儿");
-        taskEntity.setCheckInDate("2017-06-14");
+        taskEntity.setCheckInDate("2017-06-19");
         taskEntity.setRegion("三亚");
         taskEntity.setSleep(3);
-        taskEntity.setUrl("d=123&seq=sanya_12418&checkInDate=2017-06-14&checkOutDate=2017-06-17");
+        taskEntity.setUrl("d=123&seq=sanya_12418&checkInDate=2017-06-19&checkOutDate=2017-06-22");
 
-        new QunarSearchItem().parser(null,null,taskEntity);
+        new QunarSearchItem().parser(null,taskEntity);
     }
 }

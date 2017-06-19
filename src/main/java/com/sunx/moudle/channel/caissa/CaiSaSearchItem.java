@@ -54,10 +54,9 @@ public class CaiSaSearchItem implements IParser {
     /**
      * 开始解析数据
      *
-     * @param driver
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver driver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         try {
             logger.info("请求页面数据...");
             //请求页面数据
@@ -102,7 +101,6 @@ public class CaiSaSearchItem implements IParser {
             resultEntity.setUrl(task.getUrl());
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
-            resultEntity.setSleep(task.getSleep());
 
             factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         }catch (Exception e){
@@ -123,6 +121,6 @@ public class CaiSaSearchItem implements IParser {
         taskEntity.setPeopleType("2成人1儿童");
         taskEntity.setChannelName("凯撒");
 
-        search.parser(null,null,taskEntity);
+        search.parser(null,taskEntity);
     }
 }

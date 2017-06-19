@@ -31,6 +31,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -53,17 +54,25 @@ public class LvMamaSearchItem implements IParser {
     private Request request = new Request();
 
     //详情数据内容
-    private String DETAIL_URL = "http://dujia.lvmama.com/package/loadingGoods?selectDate1=CHECK_IN_DAY&adultQuantity=ADULT_NUM&childQuantity=CHILD_NUM&quantity=1&productId=PRO_ID&startDistrictId=-1";
+    private String DETAIL_URL = "http://dujia.lvmama.com/package/loadingGoods?selectDate1=CHECK_IN_DAY&adultQuantity=ADULT_NUM&childQuantity=CHILD_NUM&quantity=1&productId=PRO_ID&startDistrictId=-1&changeToPeopleFlag=N&choadultQuantity=&chochildQuantity=";
+
+    public LvMamaSearchItem(){
+        site.addHeader("Accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        site.addHeader("Accept-Encoding","gzip, deflate, sdch");
+        site.addHeader("Accept-Language","zh-CN,zh;q=0.8");
+        site.addHeader("User-Agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36");
+        site.setTimeOut(1000 * 10);
+    }
 
     /**
      * 开始解析数据
      *
-     * @param driver
+     * @param factory
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver driver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         try{
-            return dealFreeData(factory,driver,task);//表示自由行
+            return dealFreeData(factory,task);//表示自由行
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -73,27 +82,33 @@ public class LvMamaSearchItem implements IParser {
     /**
      * 处理自由行数据
      * @param factory
-     * @param driver
      * @param task
      */
-    public int dealFreeData(DBFactory factory, RemoteWebDriver driver, TaskEntity task) throws Exception {
+    public int dealFreeData(DBFactory factory, TaskEntity task) throws Exception {
         //下载首页
-        String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site.setTimeOut(10000));
+        String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site,false);
         //从网页源码中抽取出成人数,儿童数,请求数据
         Page page = Page.me().bind(html);
         //成人数
-        String adultNum = page.css("span#adult-count-span");
+        String adultNum = page.css("span[id^=adult]");
         //儿童数
-        String childNum = page.css("span#child-count-span");
+        String childNum = page.css("span[id^=child]");
         //商品id
-        String proId = page.css("input#productId","value");
+        String proId = page.css("#productId","value");
+        if(proId == null){
+            proId = page.filter("div.product_info1","p");
+            if(proId != null){
+                proId = Helper.clean(proId,"[^0-9]","");
+            }                     
+        }
         //获取价格数据
         String detailHtml = toDetail(task.getCheckInDate(),proId,adultNum,childNum);
         //开始抽取出总价格
         Page pricePage = Page.me().bind(detailHtml);
         int price = toPrice(pricePage);
+        if(price == 0)return Constant.TASK_FAIL;
         //转化为快照
-        toSnapshot(factory,task,page,price,pricePage.html(),adultNum,childNum);
+        toSnapshot(factory,task,page,price,detailHtml,adultNum,childNum);
         return Constant.TASK_SUCESS;
     }
 
@@ -107,9 +122,11 @@ public class LvMamaSearchItem implements IParser {
         String priceStr = pricePage.css(".default div[class=package-item adjust-product-item package-button-div]","data-price");
         //剔除保险等数据的价格
         pricePage.remove(".optional-item-status i");
+        if(priceStr == null || priceStr.length() <= 0){
+            return 0;
+        }
         //将价格格式化为整数
-        int price = Helper.toInt(priceStr);
-        return price / 100;
+        return Helper.toInt(priceStr) / 100;
     }
 
     /**
@@ -122,11 +139,16 @@ public class LvMamaSearchItem implements IParser {
      */
     public String toDetail(String checkInDay,String proId,String adultNum,String childNum){
         try{
+            logger.info(proId + "\t" + adultNum + "\t" + childNum);
             String link = DETAIL_URL.replaceAll("CHECK_IN_DAY",checkInDay)
                                     .replaceAll("ADULT_NUM",adultNum)
                                     .replaceAll("CHILD_NUM",childNum)
                                     .replaceAll("PRO_ID",proId);
-            return Helper.downlaoder(downloader,request.setUrl(link),site);
+            //格式化site的请求头
+            site.addHeader("Content-Type","application/json;charset=utf-8");
+            site.addHeader("Referer","http://dujia.lvmama.com/package/" + proId);
+
+            return Helper.downlaoder(downloader,request.setUrl(link),site,false);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -144,15 +166,14 @@ public class LvMamaSearchItem implements IParser {
         //调整网页中购买的份数,将购买份数调整为1
         page.append("select#preorder-quantity","<option value=\"1\" selected=\"selected\">1</option>","select#preorder-quantity option");
         //填充日期
-        String timeHtml = "<input class=\"\" id=\"\" type=\"text\" value=\""+ task.getCheckInDate() + "\"/>";
-        page.append("div#trip-time",timeHtml,"input#preorder-start-time");
+        String timeHtml = "<input class=\"like-input JS_calendar\" type=\"text\" value=\""+ task.getCheckInDate() + "\"/>";
+        page.append("div[class=hotelSeach-input startDate pr]",timeHtml,"input[class=like-input JS_calendar]");
         //填充价格
         page.clean("#total-price-value");
         page.append("#total-price-value","" + price);
 
         //填充实际网页内容数据
         page.append("div#preorder-adjust",html);
-
         //转化为快照
         toSnapshot(factory,task,page.html(),adultNum,childNum);
     }
@@ -187,7 +208,6 @@ public class LvMamaSearchItem implements IParser {
             resultEntity.setUrl(task.getUrl());
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
-            resultEntity.setSleep(task.getSleep());
 
             factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         }catch (Exception e){
@@ -202,11 +222,11 @@ public class LvMamaSearchItem implements IParser {
     public static void main(String[] args){
         TaskEntity taskEntity = new TaskEntity();
         taskEntity.setChannelId(6);
-        taskEntity.setChannelName("驴妈妈");
-        taskEntity.setCheckInDate("2017-07-07");
+        taskEntity.setChannelName("驴妈妈-搜索");
+        taskEntity.setCheckInDate("2017-07-06");
         taskEntity.setRegion(Constant.DEFALUT_REGION);
-        taskEntity.setUrl("http://dujia.lvmama.com/package/1492134");
+        taskEntity.setUrl("http://dujia.lvmama.com/package/625844");
 
-        new LvMamaSearchItem().parser(null,null,taskEntity);
+        new LvMamaSearchItem().parser(null,taskEntity);
     }
 }

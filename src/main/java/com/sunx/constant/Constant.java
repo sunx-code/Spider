@@ -1,14 +1,9 @@
 package com.sunx.constant;
 
-import java.net.InetAddress;
-
 /**
  * 常量类
  */
 public class Constant {
-    //log4j日志对象配置文件
-    public static final String LO4J_CONFIG_PATH = "conf/log4j.properties";
-
     //数据库配置文件存储路径
     public static final String DB_CONFIG_FILE ="conf/db.properties";
     //数据库连接池默认名称

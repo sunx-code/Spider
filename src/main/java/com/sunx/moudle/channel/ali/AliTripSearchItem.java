@@ -11,19 +11,12 @@ import com.sunx.entity.ResultEntity;
 import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
-import com.sunx.moudle.channel.Wait;
-import com.sunx.moudle.dynamic.DriverManager;
 import com.sunx.moudle.enums.ImageType;
-import com.sunx.moudle.proxy.IProxy;
 import com.sunx.utils.FileUtil;
 import com.sunx.utils.Helper;
-import com.sunx.utils.TimerUtils;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.storage.DBFactory;
 import org.apache.commons.io.FileUtils;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +24,6 @@ import java.io.File;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 @Service(id = 7, service = "com.fosun.fonova.moudle.channel.ali.AliTripSearch")
 public class AliTripSearchItem implements IParser {
@@ -72,10 +61,9 @@ public class AliTripSearchItem implements IParser {
      * https://acs.m.taobao.com/h5/mtop.trip.traveldetailskip.detail.get/3.0?type=originaljsonp&callback=mtopjsonp1
      * &api=mtop.trip.traveldetailskip.detail.get&v=3.0&data=%7B%22itemId%22%3A%2240258420851%22%2C%22h5Version%22%3A%220.2.24%22%7D&ttid=201300@travel_h5_3.1.0
      * &appKey=12574478&t=1497272601446&sign=fab2c9e2640e10f75f84ecbe59a71f15
-     * @param driver
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver driver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         try{
             //获取下载的网页内容
             String src = getSrc(task);
@@ -123,16 +111,12 @@ public class AliTripSearchItem implements IParser {
             // ===================================
             ResultEntity resultEntity = new ResultEntity();
             resultEntity.setId(md5);
-            resultEntity.setCheckInDate(task.getCheckInDate().replaceAll("-",""));
             resultEntity.setChannelName(task.getChannelName());
-            resultEntity.setHouseType(null);
-            resultEntity.setPeopleType(null);
             resultEntity.setRegion(region);
             resultEntity.setTid(task.getId());
             resultEntity.setUrl(task.getUrl());
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
-            resultEntity.setSleep(task.getSleep());
 
             factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
             return Constant.TASK_SUCESS;
@@ -194,8 +178,8 @@ public class AliTripSearchItem implements IParser {
         int i = 0;
         while(i < 3){
             try{
-                src = Helper.downlaoder(downloader,request,site,false);
                 i++;
+                src = Helper.downlaoder(downloader,request,site,false);
                 if(src == null || src.contains("<!DOCTYPE html>")){
                     logger.error("下载失败,等待下次重试......");
                     Thread.sleep(1500);
@@ -262,7 +246,7 @@ public class AliTripSearchItem implements IParser {
         taskEntity.setChannelName("阿里旅行-旅游度假");
         taskEntity.setChannelId(123);
 
-        new AliTripSearchItem().parser(null,null,taskEntity);
+        new AliTripSearchItem().parser(null,taskEntity);
     }
 
 }

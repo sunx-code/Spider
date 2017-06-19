@@ -69,7 +69,6 @@ public class TuNiuItem implements IParser {
 
     public TuNiuItem(){
         //请求头
-        site.addHeader("accept","application/json");
         site.addHeader("accept-encoding","gzip, deflate, sdch, br");
         site.addHeader("user-agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36");
 
@@ -80,13 +79,13 @@ public class TuNiuItem implements IParser {
     /**
      * 开始解析数据
      *
-     * @param pageDriver
+     * @param factory
      * @param task
      */
-    public int parser(DBFactory factory, RemoteWebDriver pageDriver, TaskEntity task) {
+    public int parser(DBFactory factory, TaskEntity task) {
         try{
             //开始请求网站首页,获取网页源码
-            String src = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site.setTimeOut(10000));
+            String src = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site,false);
             if(src == null || src.length() <= 0){
                 logger.error("下载网页源码失败.链接地址为:" + task.getUrl());
                 return Constant.TASK_FAIL;
@@ -96,11 +95,11 @@ public class TuNiuItem implements IParser {
             //处理这一天的数据
             String html = dealData(task,pro,2,1);
             toSnapshot(factory,src,html,task,2,1);
-            Thread.sleep(1500);
+            sleep(1500);
             //线程休眠一定时间后继续
             html = dealData(task,pro,2,0);
             toSnapshot(factory,src,html,task,2,1);
-            Thread.sleep(1500);
+            sleep(1500);
             //线程休眠一定时间后继续
             html = dealData(task,pro,1,1);
             toSnapshot(factory,src,html,task,2,1);
@@ -119,6 +118,9 @@ public class TuNiuItem implements IParser {
      * @param childNum
      */
     public void toSnapshot(DBFactory factory,String src,String rooms,TaskEntity task,int adultNum,int childNum){
+        if(rooms == null || rooms.length() <= 0){
+            rooms = "暂时没有房型";
+        }
         //找到房型加载中的标签,将该标签剔除掉,同时遍历集合,将数据添加进网页中
         String txt = removeTag(src);
         //遍历集合,开始追加数据
@@ -163,7 +165,7 @@ public class TuNiuItem implements IParser {
     public String removeTag(String html){
         try{
             Page page = Page.me().bind(html);
-            page.append("preorder-adjust","#ROOM_HTML",".book_title",".book_resource");
+            page.append(".book_bar","#ROOM_HTML",".book_title",".book_resource");
             return page.html();
         }catch (Exception e){
             e.printStackTrace();
@@ -244,7 +246,7 @@ public class TuNiuItem implements IParser {
 
                     detailArr.add(detail);
                     //打印数据  那一天  那个店铺  店铺链接     房型   成人数   儿童数   酒店价格   卡券价格
-                    System.out.println(task.getCheckInDate() + "\t" + pro + "\t" + resName + "\t" + houseType + "\t" +  adultNum + "\t" + childNum + "\t" + price * roomNum + "\t" + tecPrice);
+                    logger.info(task.getCheckInDate() + "\t" + pro + "\t" + resName + "\t" + houseType + "\t" +  adultNum + "\t" + childNum + "\t" + price * roomNum + "\t" + tecPrice);
                 }catch (Exception e){
                     e.printStackTrace();
                 }
@@ -495,6 +497,18 @@ public class TuNiuItem implements IParser {
     }
 
     /**
+     * 线程休眠
+     * @param sleep
+     */
+    public void sleep(long sleep){
+        try{
+            Thread.sleep(sleep);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
      * 测试main函数
      * @param args
      */
@@ -507,6 +521,6 @@ public class TuNiuItem implements IParser {
         taskEntity.setSleep(2);
         taskEntity.setUrl("http://www.tuniu.com/tours/210422974");
 
-        new TuNiuItem().parser(null,null,taskEntity);
+        new TuNiuItem().parser(null,taskEntity);
     }
 }
