@@ -1,6 +1,5 @@
 package com.sunx.moudle.channel.ctrip;
 
-import com.google.common.base.Predicate;
 import com.sunx.constant.Constant;
 import com.sunx.entity.ResultEntity;
 import com.sunx.entity.TaskEntity;
@@ -13,17 +12,13 @@ import com.sunx.utils.FileUtil;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.storage.DBFactory;
 import org.apache.commons.io.FileUtils;
-import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 
 @Service(id = 3, service = "com.fosun.fonova.moudle.channel.ctrip.CTripItem")
 public class CTripItem implements IParser {
@@ -63,27 +58,6 @@ public class CTripItem implements IParser {
             return Constant.TASK_FAIL;
         }finally {
             WebDriverPool.me().recycle(pageDriver);
-        }
-    }
-
-    /**
-     * @param driver
-     * @param sleep
-     */
-    public void wait(WebDriver driver,int sleep, final String[] lists){
-        try {
-            new WebDriverWait(driver, sleep).until(new Predicate<WebDriver>() {
-                public boolean apply(WebDriver input) {
-                    if(lists == null || lists.length < 0)return true;
-                    for(String css : lists){
-                        List<WebElement> eles = input.findElements(By.cssSelector(css));
-                        if(!eles.isEmpty()) return true;
-                    }
-                    return false;
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 

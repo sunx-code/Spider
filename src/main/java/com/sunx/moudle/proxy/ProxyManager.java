@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class ProxyManager {
     private String BASE = "http://www.xdaili.cn/ipagent/privateProxy/applyStaticProxy?count=1&spiderId=9802f3a8f7134573b5d2dc0c6ed1c83d&returnType=1";
     private ConcurrentLinkedQueue<IProxy> queue = new ConcurrentLinkedQueue<IProxy>();
-    private int DEFAULT_PROXY_TASK_DURATION = 1000 * 10;
+    private int DEFAULT_PROXY_TASK_DURATION = 1000 * 5;
     private Downloader downloader = new HttpClientDownloader();
     private Request request = new Request();
     private Site site = new Site();

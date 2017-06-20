@@ -57,6 +57,7 @@ public class WebDriverPool {
      */
     public void recycle(WebDriver driver){
         if(driver == null)return;
+        driver.quit();
         pool.returnObject(driver);
     }
     /**

@@ -8,8 +8,11 @@ import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
 import com.sunx.moudle.enums.ImageType;
+import com.sunx.storage.DBConfig;
 import com.sunx.storage.DBFactory;
+import com.sunx.storage.pool.DuridPool;
 import com.sunx.utils.FileUtil;
+import com.sunx.utils.Helper;
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
@@ -19,6 +22,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,7 +66,7 @@ public class WowoYooSearchItem implements IParser {
 
         logger.info("开始访问地区首页:" + task.getRegion());
         //访问地点的首页数据
-        String src = downloader.downloader(request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),site.setTimeOut(10000));
+        String src = Helper.downlaoder(downloader,request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),site.setTimeOut(10000));
         //找到相应的位置,进行填写数据后模拟点击
         return dealData(src,factory,task);
     }
@@ -71,6 +75,7 @@ public class WowoYooSearchItem implements IParser {
         //对数据进行判定
         if(src == null || src.length() <= 0){
             logger.error("下载出现错误,地区：" + task.getRegion() +",成人数:" + task.getAdultNum() +",类型:" + task.getPeopleType() + ",入住日期:" + task.getCheckInDate());
+            System.out.println(src);
             return -1;
         }
         //将网页源码中的图片地址,以及css地址,js地址补全
@@ -135,16 +140,25 @@ public class WowoYooSearchItem implements IParser {
     }
 
     public static void main(String[] args){
-        TaskEntity taskEntity = new TaskEntity();
-        taskEntity.setAdultNum(2);
-        taskEntity.setChildNum(0);
-        taskEntity.setChannelId(2);
-        taskEntity.setCheckInDate("2017-05-03");
-        taskEntity.setPeopleType("2成人");
-        taskEntity.setRegion("卡尼岛");
-        taskEntity.setSleep(2);
-        taskEntity.setUrl("https://wowoyoo.com/clubmed/cau");
+        //初始化数据库连接池
+        DBConfig config = new DBConfig(Constant.DB_CONFIG_FILE);
+        DuridPool.me().build(config);
 
-        new WowoYooSearchItem().parser(null,taskEntity);
+        DBFactory factory = DBFactory.me();
+
+        List<TaskEntity> task = factory.select("localhost","task",new String[]{"id"},new Object[]{7140},TaskEntity.class);
+
+        TaskEntity taskEntity = task.get(0);
+//        taskEntity.setId(123l);
+//        taskEntity.setAdultNum(2);
+//        taskEntity.setChildNum(0);
+//        taskEntity.setChannelId(2);
+//        taskEntity.setCheckInDate("2017-06-21");
+//        taskEntity.setPeopleType("2成人");
+//        taskEntity.setRegion("卡尼岛");
+//        taskEntity.setSleep(2);
+//        taskEntity.setUrl("https://wowoyoo.com/clubmed/cau");
+
+        new WowoYooSearchItem().parser(factory,taskEntity);
     }
 }

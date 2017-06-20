@@ -179,7 +179,7 @@ public class AliTripSearchItem implements IParser {
         while(i < 3){
             try{
                 i++;
-                src = Helper.downlaoder(downloader,request,site,false);
+                src = Helper.downlaoder(downloader,request,site);
                 if(src == null || src.contains("<!DOCTYPE html>")){
                     logger.error("下载失败,等待下次重试......");
                     Thread.sleep(1500);

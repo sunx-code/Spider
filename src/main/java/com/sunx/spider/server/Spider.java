@@ -5,13 +5,10 @@ import com.sunx.constant.Constant;
 import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
-import com.sunx.moudle.dynamic.WebDriverPool;
 import com.sunx.storage.DBConfig;
 import com.sunx.storage.DBFactory;
 import com.sunx.storage.DBUtils;
 import com.sunx.storage.pool.DuridPool;
-import javafx.concurrent.Task;
-import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
