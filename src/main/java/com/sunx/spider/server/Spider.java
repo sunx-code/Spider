@@ -125,6 +125,7 @@ public class Spider {
                     }finally {
                         lock.unlock();
                     }
+                    logger.info("队列数据增加线程开始休眠,等待下次开始检查...");
                     Thread.sleep(QUEUE_ADD_DURATION);
                 }catch (Exception e){
                     e.printStackTrace();
@@ -138,14 +139,13 @@ public class Spider {
      */
     private void init(long cid) throws Exception {
         try{
-            lock.lock();
             TaskEntity taskEntity = new TaskEntity();
             taskEntity.setStatus(Constant.TASK_NEW);
             taskEntity.setChannelId(cid);
-            logger.info("缓存需要添加新的数据,现在开始从数据库中拉去新的数据添加到集合中...");
+            logger.info("缓存需要添加" + cid + "的数据,现在开始从数据库中拉去新的数据添加到集合中...");
             List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,taskEntity);
             if(tasks == null){
-                logger.error("数据拉去为空...");
+                logger.error("渠道" + cid + "数据拉去为空. 对应的缓存大小为:" + queue.get(cid).size());
                 return;
             }
 
@@ -159,8 +159,6 @@ public class Spider {
             logger.info("当前渠道id:" + cid + "对应的缓存大小为:" + queue.get(cid).size());
         }catch (Exception e){
             e.printStackTrace();
-        }finally{
-            lock.unlock();
         }
     }
 
@@ -305,6 +303,7 @@ public class Spider {
 
         @Override
         public void run() {
+            String tableName = null;
             while(true){
                 //从缓存中读取一个任务对象
                 TaskEntity task = null;
@@ -316,17 +315,21 @@ public class Spider {
                         Thread.sleep(3000);
                         continue;
                     }
+                    if(tableName == null){
+                        tableName = DBUtils.table(task);
+                    }
                     //开始执行数据处理
                     Integer status = (Integer)method.invoke(bean,factory,task);
                     //更新任务为成功状态
-                    factory.update(Constant.DEFAULT_DB_POOL, DBUtils.table(task),
+                    boolean falg = factory.update(Constant.DEFAULT_DB_POOL, tableName,
                             new String[]{"status"},
-                            new Object[]{status},
+                            new Object[]{status.intValue()},
                             new String[]{"id"},
                             new Object[]{task.getId()});
+                    logger.info("更新任务" + task.getId() + "完成,状态为:" + falg);
                     //现场休眠
-//                    Thread.sleep(2000);
-//                    System.out.println("现场休眠1.5s后继续....");
+                    Thread.sleep(3000);
+                    System.out.println("现场休眠3s后继续....");
                 }catch (Exception e){
                     e.printStackTrace();
                     logger.error(e.getMessage());

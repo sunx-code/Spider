@@ -10,6 +10,7 @@ import com.sunx.downloader.Site;
 import com.sunx.parser.Node;
 import com.sunx.parser.Page;
 import com.sunx.storage.DBFactory;
+import com.sunx.utils.Helper;
 import com.sunx.utils.TimerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,16 +86,16 @@ public class LvMama implements IMonitor {
         try{
             //下载网页源码,解析其中的链接,并判断是否需要翻页
             //请求结果数据
-            String src = downloader.downloader(request.setUrl(link),site);
+            String src = Helper.downlaoder(downloader,request.setUrl(link),site);
             if(src == null || src.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + link);
                 return;
             }
             Page page = Page.me().bind(src);
             //开始解析数据
-            Node node = page.$("div[class=product-item clearfix]");
+            Node node = page.$("#route-list div.product-item");
             if(node == null || node.size() <= 0){
-                logger.error("解析出现错误,css为：div[class=product-item clearfix],解析的网页为:" + link);
+                logger.error("解析出现错误,css为：#route-list div.product-item,解析的网页为:" + link);
                 return;
             }
             //遍历处理每个数据
@@ -136,7 +137,7 @@ public class LvMama implements IMonitor {
             }
             logger.info("驴妈妈的种子链接为:" + href);
         }
-        factory.insert(Constant.DEFAULT_DB_POOL, tasks);
+//        factory.insert(Constant.DEFAULT_DB_POOL, tasks);
     }
 
     /**

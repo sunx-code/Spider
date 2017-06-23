@@ -34,9 +34,9 @@ public class AliTripSearchItem implements IParser {
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     //默认的token
-    private String h5_tk = "";//1f5ffe425695856baeba3403e9766c6a
-    private String h5_tk_enc = "";//ed4dcd762a714dacdd6e4268eb592bce
-    private String h5_tk_time = "" + System.currentTimeMillis();
+    private String h5_tk = "6eb1b2995236e0a5401e37c1125e53bd";//1f5ffe425695856baeba3403e9766c6a
+    private String h5_tk_enc = "617850adca5beb0d1c8f23708667482c";//ed4dcd762a714dacdd6e4268eb592bce
+    private String h5_tk_time = "1498028667009";// + System.currentTimeMillis();
     //key
     private String appkey = "12574478";
 
@@ -47,12 +47,14 @@ public class AliTripSearchItem implements IParser {
     private String DATA_STR = "{\"itemId\":\"ITEM_ID\",\"h5Version\":\"0.2.24\"}";
     private String DATA_DETAIL_URL = "https://acs.m.taobao.com/h5/mtop.trip.traveldetailskip.detail.get/3.0?type=originaljsonp&callback=mtopjsonp1&api=mtop.trip.traveldetailskip.detail.get&v=3.0&data=DATA_STR&ttid=201300@travel_h5_3.1.0&appKey=12574478&t=TIME_CODE&sign=SIGN_CODE";
 
+    private String BASE_URL = "https://items.fliggy.com/item.htm?id=";
+
     public AliTripSearchItem(){
         //初始化请求头
         site.addHeader("Accept","*/*");
         site.addHeader("Accept-Encoding","gzip, deflate, sdch");
         site.addHeader("Accept-Language","zh-CN,zh;q=0.8,en;q=0.6");
-        site.addHeader("User-Agent","Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36");
+        site.addHeader("User-Agent","Dalvik/2.1.0 (Linux; U; Android 6.0; KNT-UL10 Build/HUAWEIKNT-UL10)");
         //设置保存cookie
         site.setIsSave(true).setTimeOut(10000);
     }
@@ -97,6 +99,9 @@ public class AliTripSearchItem implements IParser {
      */
     public int toSnapshot(DBFactory factory,TaskEntity task,JSONObject data){
         try{
+            //封装html
+            String html = toHtml(data.toJSONString());
+
             logger.info("开始存储网页快照数据到数据库中....");
             Date date = new Date();
             String vday = fs.format(date);
@@ -106,7 +111,7 @@ public class AliTripSearchItem implements IParser {
             String md5 = MD5.md5(id);
 
             String htmPath = FileUtil.createPageFile(now, task.getChannelName(), region, now, md5, ImageType.HTML);
-            FileUtils.writeStringToFile(new File(htmPath), data.toJSONString(), "GBK");
+            FileUtils.writeStringToFile(new File(htmPath), html, "UTF8");
 
             // ===================================
             ResultEntity resultEntity = new ResultEntity();
@@ -114,7 +119,7 @@ public class AliTripSearchItem implements IParser {
             resultEntity.setChannelName(task.getChannelName());
             resultEntity.setRegion(region);
             resultEntity.setTid(task.getId());
-            resultEntity.setUrl(task.getUrl());
+            resultEntity.setUrl(BASE_URL + task.getUrl());
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
 
@@ -124,6 +129,20 @@ public class AliTripSearchItem implements IParser {
             e.printStackTrace();
         }
         return Constant.TASK_FAIL;
+    }
+
+    /**
+     *
+     * @param json
+     * @return
+     */
+    public String toHtml(String json){
+        StringBuffer buffer = new StringBuffer();
+        buffer.append("<html><head><meta http-equiv=Content-Type content=\"text/html;charset=utf-8\"></head>");
+        buffer.append("<body>");
+        buffer.append(json);
+        buffer.append("</body></html>");
+        return buffer.toString();
     }
 
     /**
@@ -140,7 +159,7 @@ public class AliTripSearchItem implements IParser {
                     site.addHeader("Cookie", "_m_h5_tk=" + h5_tk + "_" + h5_tk_time + "; _m_h5_tk_enc=" + h5_tk_enc + ";");
                 }
                 String link = getUrl(task, h5_tk, appkey);
-                page = loader(downloader,request.setUrl(link), site);
+                page = Helper.downlaoder(downloader,request.setUrl(link), site,false);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
                     //说明数据失败,需要重新抓取
@@ -165,32 +184,6 @@ public class AliTripSearchItem implements IParser {
                        .replaceAll("}\\)","}");
         }
         return page;
-    }
-
-    /**
-     * 下载数据内容
-     * @param request
-     * @param site
-     * @return
-     */
-    public String loader(Downloader downloader,Request request, Site site){
-        String src = null;
-        int i = 0;
-        while(i < 3){
-            try{
-                i++;
-                src = Helper.downlaoder(downloader,request,site);
-                if(src == null || src.contains("<!DOCTYPE html>")){
-                    logger.error("下载失败,等待下次重试......");
-                    Thread.sleep(1500);
-                    continue;
-                }
-                break;
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-        return src;
     }
 
     /**

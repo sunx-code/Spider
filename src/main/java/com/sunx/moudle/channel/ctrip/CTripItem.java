@@ -8,6 +8,7 @@ import com.sunx.moudle.channel.IParser;
 import com.sunx.moudle.channel.Wait;
 import com.sunx.moudle.dynamic.WebDriverPool;
 import com.sunx.moudle.enums.ImageType;
+import com.sunx.parser.Page;
 import com.sunx.utils.FileUtil;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.storage.DBFactory;
@@ -39,8 +40,8 @@ public class CTripItem implements IParser {
         try{
             //获取浏览器对象
             pageDriver = WebDriverPool.me().get();
-            //请求任务搜也
-            pageDriver.get(task.getUrl());
+            //请求任务
+            pageDriver.navigate().to(task.getUrl());
             //休眠一定时间,等待页面渲染完毕
             Wait.wait(pageDriver,3,2,() -> true);
             //判断是否需要进行店家展开更多房型
@@ -48,6 +49,8 @@ public class CTripItem implements IParser {
             if(source != null && source.contains("展开全部房型")){
                 source = source.replaceAll("unexpanded hidden","unexpanded");
             }
+            //添加编码设定,让浏览器可以识别对应的编码
+            source = toHtml(source);
             //保存截图
             save(factory,task,source);
             //关闭浏览器
@@ -76,7 +79,7 @@ public class CTripItem implements IParser {
         String md5 = MD5.md5(id);
 
         String txtPath = FileUtil.createPageFile(now, task.getChannelName(), task.getRegion(), task.getCheckInDate(), md5, ImageType.HTML);
-        FileUtils.writeStringToFile(new File(txtPath), source, "GBK");
+        FileUtils.writeStringToFile(new File(txtPath), source, "UTF8");
 
         // ===================================
         ResultEntity resultEntity = new ResultEntity();
@@ -90,7 +93,18 @@ public class CTripItem implements IParser {
         resultEntity.setPath(txtPath);
         resultEntity.setSleep(task.getSleep());
 
-//        factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+        factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+    }
+
+    /**
+     *
+     * @param source
+     * @return
+     */
+    public String toHtml(String source){
+        Page page = Page.me().bind(source);
+        page.append("head","<meta http-equiv=Content-Type content=\"text/html;charset=utf-8\">");
+        return page.html();
     }
 
     /**

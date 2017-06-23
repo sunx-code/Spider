@@ -168,7 +168,6 @@ public class AoYouSearchItem implements IParser {
      * @return
      */
     public int toSnapshot(DBFactory factory,TaskEntity task,Page page,Page roomPage,Page pricePage){
-        int cnt = -1;
         //抽取出房型
         Node node = roomPage.$("[class=row_choose package_sec clearfix]:contains(房) div.row_item");
         //抽取出人员组成
@@ -201,8 +200,7 @@ public class AoYouSearchItem implements IParser {
                 toSnapshot(factory,task,page,roomPage,pricePage,houseType,peopleType,price);
             }
         }
-        if(cnt > 0)return Constant.TASK_SUCESS;
-        return Constant.TASK_FAIL;
+        return Constant.TASK_SUCESS;
     }
 
     /**

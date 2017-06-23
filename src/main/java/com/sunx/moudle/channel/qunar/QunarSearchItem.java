@@ -54,6 +54,8 @@ public class QunarSearchItem implements IParser {
     private String ROOM_DETAIIL = "qunar";
     private String ROOM_DETAIL_UL_LIST = "qunar-li";
 
+    private String BASE_URL = "http://touch.qunar.com/hotel/hoteldetail?";
+
     //格式化日期
     private SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
     //格式化日期数据
@@ -260,11 +262,9 @@ public class QunarSearchItem implements IParser {
             resultEntity.setId(md5);
             resultEntity.setCheckInDate(task.getCheckInDate().replaceAll("-",""));
             resultEntity.setChannelName(task.getChannelName());
-            resultEntity.setHouseType(null);
-            resultEntity.setPeopleType(null);
             resultEntity.setRegion(region);
             resultEntity.setTid(task.getId());
-            resultEntity.setUrl(task.getUrl());
+            resultEntity.setUrl(BASE_URL + task.getUrl());
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
             resultEntity.setSleep(task.getSleep());

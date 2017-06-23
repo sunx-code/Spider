@@ -34,8 +34,8 @@ public class WebDriverPool {
 		GenericObjectPoolConfig config = new GenericObjectPoolConfig();
         config.setMaxTotal(Constant.WEB_DRIVER_NUM); //整个池最大值
         config.setMaxWaitMillis(1000); //获取不到永远不等待
-        config.setTimeBetweenEvictionRunsMillis(5 * 60 * 1000L);
-        config.setMinEvictableIdleTimeMillis(10 * 6000L);
+        config.setTimeBetweenEvictionRunsMillis(60 * 1000L);
+        config.setMinEvictableIdleTimeMillis(60 * 1000L);
         return new GenericObjectPool<>(factory, config);
 	}
 
@@ -57,7 +57,7 @@ public class WebDriverPool {
      */
     public void recycle(WebDriver driver){
         if(driver == null)return;
-        driver.quit();
+        driver.manage().deleteAllCookies();
         pool.returnObject(driver);
     }
     /**

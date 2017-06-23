@@ -260,7 +260,7 @@ public class TuNiuItem implements IParser {
                 buffer.append(roomHtml);
             }
             //开始处理酒店的信息,将拼接好的数据返回回去,用于填充快照
-            return toTemplate(adultNum,childNum,hotel,hotelInfo,buffer,selectRoom);
+            return toTemplate(adultNum,childNum,task.getSleep(),hotel,hotelInfo,buffer,selectRoom);
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -272,7 +272,7 @@ public class TuNiuItem implements IParser {
      * @param hotel
      * @return
      */
-    public String toTemplate(int adultNum,int childNum,JSONObject hotel,JSONObject hotelInfo,StringBuffer buffer,JSONObject selectRoom){
+    public String toTemplate(int adultNum,int childNum,int sleep,JSONObject hotel,JSONObject hotelInfo,StringBuffer buffer,JSONObject selectRoom){
         try{
             //更新hotelInfo
             JSONObject hotelResInfo = hotelInfo.getJSONObject("hotelResInfo");
@@ -290,6 +290,7 @@ public class TuNiuItem implements IParser {
             data = data.replaceAll("#SELEC_ROOM_TITLE",selectRoom.getString("resName"));
             data = data.replaceAll("#SELECT_ROOM_DESC",selectRoom.getString("desc"));
             data = data.replaceAll("#SELECT_ROOME_NUM",selectRoom.getString("roomNum"));
+            data = data.replaceAll("#SLEEP_DAY",sleep + "");
             return data.replaceAll("#TOTAL_PRICE",selectRoom.getString("totalPrice"))
                        .replaceAll("#ROOM_LIST",buffer.toString());
         }catch (Exception e){
@@ -437,7 +438,6 @@ public class TuNiuItem implements IParser {
         for(String key : data.keySet()){
             JSONObject h = data.getJSONObject(key);
             //抽取数据
-//            obj = h.containsKey("rooms")?h.getJSONArray("rooms"):null;
             obj = h.containsKey("rooms")?h:null;
             break;
         }

@@ -86,7 +86,7 @@ public class LvMamaSearchItem implements IParser {
      */
     public int dealFreeData(DBFactory factory, TaskEntity task) throws Exception {
         //下载首页
-        String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site,false);
+        String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site);
         //从网页源码中抽取出成人数,儿童数,请求数据
         Page page = Page.me().bind(html);
         //成人数
@@ -206,6 +206,8 @@ public class LvMamaSearchItem implements IParser {
             resultEntity.setRegion(region);
             resultEntity.setTid(task.getId());
             resultEntity.setUrl(task.getUrl());
+            resultEntity.setChildNum(Helper.toInt(childNum));
+            resultEntity.setAdultNum(Helper.toInt(adultNum));
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
 

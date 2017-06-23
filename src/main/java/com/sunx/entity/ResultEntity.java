@@ -1,11 +1,8 @@
 package com.sunx.entity;
 
-import com.sunx.common.ip.IPFinder;
 import com.sunx.constant.Configuration;
 import com.sunx.storage.annotation.Row;
 import com.sunx.storage.annotation.Table;
-
-import java.net.InetAddress;
 
 /**
  * 结果存储对象
@@ -13,6 +10,9 @@ import java.net.InetAddress;
  */
 @Table(table = "result")
 public class ResultEntity {
+    //自增id
+    @Row(field = "auto_id")
+    private long autoId;
     //id md5加密结果
     private String id;
     //抓取日期
@@ -162,5 +162,13 @@ public class ResultEntity {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public long getAutoId() {
+        return autoId;
+    }
+
+    public void setAutoId(long autoId) {
+        this.autoId = autoId;
     }
 }

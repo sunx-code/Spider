@@ -153,6 +153,8 @@ public class Helper {
                             }
                             continue;
                         }
+                        //获取到代理就直接丢回去,在重新获取
+                        ProxyManager.me().offer(proxy);
                         break;
                     }
                 }
@@ -160,11 +162,12 @@ public class Helper {
                     proxy = new IProxy();
                 }
                 src = downloader.downloader(request,site,proxy.getHost(),proxy.getPort());
-                if(src != null || !flag){
-                    ProxyManager.me().offer(proxy);
-                    break;
+                if(src == null && flag){
+                    ProxyManager.me().remove(proxy);
+                    continue;
                 }
                 j++;
+                break;
             }
         }catch (Exception e){
             e.printStackTrace();

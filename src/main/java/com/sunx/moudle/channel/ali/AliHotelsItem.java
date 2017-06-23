@@ -118,7 +118,7 @@ public class AliHotelsItem  implements IParser {
             String dataStr = toSearchData(param);
             //获取下载的网页内容
             String src = getSrc(SEARCH_DATA_URL,dataStr);
-            if(src == null || src.length() <= 0)return -1;
+            if(src == null || src.length() <= 0)return Constant.TASK_FAIL;
             if(src.contains("FAIL_SYS")){
                 logger.info("处理搜索数据错误 -> " + src);
                 h5_tk = "";
@@ -130,7 +130,7 @@ public class AliHotelsItem  implements IParser {
             logger.info("下载数据完成,开始处理数据.....");
             //格式化数据为json
             JSONObject bean = toSearchDetail(param,src);
-            if(bean == null)return -1;
+            if(bean == null)return Constant.TASK_FAIL;
             JSONObject data = bean.getJSONObject("data");
             //开始处理第一个网页快照内容
             String snapshot = toSnapshot(data,param,"ali-hotel");
@@ -139,7 +139,7 @@ public class AliHotelsItem  implements IParser {
         }catch (Exception e){
             e.printStackTrace();
         }
-        return -1;
+        return Constant.TASK_FAIL;
     }
 
     /**
@@ -246,20 +246,20 @@ public class AliHotelsItem  implements IParser {
             FileUtils.writeStringToFile(new File(htmPath), html, "UTF8");
 
             // ===================================
-//            ResultEntity resultEntity = new ResultEntity();
-//            resultEntity.setId(md5);
-//            resultEntity.setCheckInDate(task.getCheckInDate().replaceAll("-",""));
-//            resultEntity.setChannelName(task.getChannelName());
-//            resultEntity.setHouseType(null);
-//            resultEntity.setPeopleType(null);
-//            resultEntity.setRegion(region);
-//            resultEntity.setTid(task.getId());
-//            resultEntity.setUrl(task.getUrl());
-//            resultEntity.setVday(vday);
-//            resultEntity.setPath(htmPath);
-//            resultEntity.setSleep(task.getSleep());
-//
-//            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
+            ResultEntity resultEntity = new ResultEntity();
+            resultEntity.setId(md5);
+            resultEntity.setCheckInDate(task.getCheckInDate().replaceAll("-",""));
+            resultEntity.setChannelName(task.getChannelName());
+            resultEntity.setHouseType(null);
+            resultEntity.setPeopleType(null);
+            resultEntity.setRegion(region);
+            resultEntity.setTid(task.getId());
+            resultEntity.setUrl(task.getUrl());
+            resultEntity.setVday(vday);
+            resultEntity.setPath(htmPath);
+            resultEntity.setSleep(task.getSleep());
+
+            factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
             return Constant.TASK_SUCESS;
         }catch (Exception e){
             e.printStackTrace();
@@ -343,7 +343,7 @@ public class AliHotelsItem  implements IParser {
                     site.addHeader("Cookie", "_m_h5_tk=" + h5_tk + "_" + h5_tk_time + "; _m_h5_tk_enc=" + h5_tk_enc + ";");
                 }
                 String link = getUrl(url,data, h5_tk, appkey);
-                page = loader(downloader,request.setUrl(link), site);
+                page = Helper.downlaoder(downloader,request.setUrl(link), site);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
                     //说明数据失败,需要重新抓取
@@ -367,32 +367,6 @@ public class AliHotelsItem  implements IParser {
             page = page.replaceAll("mtopjsonp1\\(","").replaceAll("}\\)","}");
         }
         return page;
-    }
-
-    /**
-     * 下载数据内容
-     * @param request
-     * @param site
-     * @return
-     */
-    public String loader(Downloader downloader,Request request, Site site){
-        String src = null;
-        int i = 0;
-        while(i < 3){
-            try{
-                src = Helper.downlaoder(downloader,request,site);
-                i++;
-                if(src == null || src.contains("<!DOCTYPE html>")){
-                    logger.error("下载失败,等待下次重试......");
-                    Thread.sleep(1500);
-                    continue;
-                }
-                break;
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-        return src;
     }
 
     /**

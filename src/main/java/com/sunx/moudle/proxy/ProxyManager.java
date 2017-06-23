@@ -5,8 +5,11 @@ import com.sunx.downloader.HttpClientDownloader;
 import com.sunx.downloader.Request;
 import com.sunx.downloader.Site;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -22,6 +25,8 @@ public class ProxyManager {
 
     private static int MAX_SIZE = 20;
     private static int MIN_SIZE = 10;
+
+    private ConcurrentHashMap<String,Integer> remove = new ConcurrentHashMap<>();
     /**
      *
      */
@@ -47,7 +52,14 @@ public class ProxyManager {
      * @return
      */
     public IProxy poll(){
-        return queue.poll();
+        IProxy proxy = queue.poll();
+        if(proxy == null)return null;
+        if(remove.containsKey(proxy.getHost())){
+            //删除key,重新获取代理
+            remove.remove(proxy.getHost());
+            proxy = queue.poll();
+        }
+        return proxy;
     }
 
     /**
@@ -56,6 +68,14 @@ public class ProxyManager {
     public void offer(IProxy proxy){
         if(proxy != null || proxy.getHost() == null)return;
         this.queue.offer(proxy);
+    }
+
+    /**
+     * 删除代理
+     * @param proxy
+     */
+    public void remove(IProxy proxy){
+        remove.put(proxy.getHost(),proxy.getPort());
     }
 
     /**

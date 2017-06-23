@@ -6,6 +6,7 @@ import java.util.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.sunx.constant.Configuration;
 import com.sunx.constant.Constant;
 import com.sunx.downloader.*;
 import com.sunx.entity.TaskEntity;
@@ -64,8 +65,22 @@ public class AliTripSearch implements IMonitor {
 
         site.setTimeOut(1000 * 10);
         //添加需要采集的店铺地址
-        shopIds.add("109030968");
-        shopIds.add("140046115");
+//        shopIds.add("109030968");
+//        shopIds.add("140046115");
+        initShop();
+    }
+
+    public void initShop(){
+        String str = Configuration.me().getString("alitrip.shop.ids");
+        if(str == null){
+            logger.error("阿里旅游度假渠道对应的ids配置错误...");
+            return;
+        }
+        String[] tmps = str.split(",");
+        for(String s : tmps){
+            if(s == null || s.length() <= 0)continue;
+            shopIds.add(s);
+        }
     }
 
     /**

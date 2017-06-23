@@ -75,15 +75,14 @@ public class WowoYooSearchItem implements IParser {
         //对数据进行判定
         if(src == null || src.length() <= 0){
             logger.error("下载出现错误,地区：" + task.getRegion() +",成人数:" + task.getAdultNum() +",类型:" + task.getPeopleType() + ",入住日期:" + task.getCheckInDate());
-            System.out.println(src);
-            return -1;
+            return Constant.TASK_FAIL;
         }
         //将网页源码中的图片地址,以及css地址,js地址补全
         String html = all(src);
         //补全网页后,讲数据保存
         save(html,factory,task);
 
-        return 1;
+        return Constant.TASK_SUCESS;
     }
 
     /**

@@ -9,9 +9,6 @@ public class Constant {
     //数据库连接池默认名称
     public static final String DEFAULT_DB_POOL = "localhost";
 
-    //monitor线程默认启动的线程数据,去拉去定时任务
-    public static final int MONITOR_THREAD_NUM = 5;
-
     //爬虫参数
     public static int[] NUMBER_OF_ADULT = { 1,2 };// 几个成人
     public static int[] NUMBER_OF_CHILDREN = { 0, 1 };// 几个儿童

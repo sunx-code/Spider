@@ -1,5 +1,6 @@
 package com.sunx.spider.server;
 
+import com.sunx.constant.Configuration;
 import com.sunx.constant.Constant;
 import com.sunx.entity.ServiceEntity;
 import com.sunx.utils.TimerUtils;
@@ -117,8 +118,9 @@ public class Monitor {
      * 3 反射调用服务的一个方法
      */
     private void monitor(){
-        ExecutorService service = Executors.newFixedThreadPool(Constant.MONITOR_THREAD_NUM);
-        for(int i=0;i<Constant.MONITOR_THREAD_NUM;i++){
+        int threadNum = Configuration.me().getInt("thread.num");
+        ExecutorService service = Executors.newFixedThreadPool(threadNum);
+        for(int i=0;i<threadNum;i++){
             service.submit(new Exec());
         }
     }
