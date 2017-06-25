@@ -32,7 +32,7 @@ public class WowoYooSearch implements IMonitor {
         regions.put("桂林", "guilin");
         regions.put("东澳度假村", "dongao");
         regions.put("北大壶", "beidahu");
-        regions.put("亚布力", "yabuli");
+//        regions.put("亚布力", "yabuli");
         regions.put("石垣岛", "kabira");
         regions.put("佐幌", "sahoro");
         regions.put("巴厘岛", "bali");

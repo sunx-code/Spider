@@ -8,7 +8,7 @@ import com.sunx.storage.annotation.Table;
  * 结果存储对象
  * 1
  */
-@Table(table = "result")
+@Table(table = "clubmed_pricemonitor.result")
 public class ResultEntity {
     //自增id
     @Row(field = "auto_id")

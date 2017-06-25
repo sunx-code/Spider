@@ -118,9 +118,11 @@ public class Spider {
                             }
                             //当前渠道对应的任务数
                             int count = queue.get(cid).size();
+                            logger.info("缓存需要添加" + cid + "的数据,现在开始从数据库中拉去新的数据添加到集合中,当前队列大小为:" + count);
                             if(count <= QUEUE_MIN_SIZE){
                                 init(cid);
                             }
+                            logger.info("当前渠道id:" + cid + "对应的缓存大小为:" + queue.get(cid).size());
                         }
                     }finally {
                         lock.unlock();
@@ -142,7 +144,7 @@ public class Spider {
             TaskEntity taskEntity = new TaskEntity();
             taskEntity.setStatus(Constant.TASK_NEW);
             taskEntity.setChannelId(cid);
-            logger.info("缓存需要添加" + cid + "的数据,现在开始从数据库中拉去新的数据添加到集合中...");
+
             List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,taskEntity);
             if(tasks == null){
                 logger.error("渠道" + cid + "数据拉去为空. 对应的缓存大小为:" + queue.get(cid).size());
@@ -156,7 +158,6 @@ public class Spider {
                 }
                 if(queue.get(cid).size() >= QUEUE_MAX_SIZE)break;
             }
-            logger.info("当前渠道id:" + cid + "对应的缓存大小为:" + queue.get(cid).size());
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -308,6 +309,9 @@ public class Spider {
                 //从缓存中读取一个任务对象
                 TaskEntity task = null;
                 try{
+                    logger.info("现场休眠3s后继续....");
+                    //现场休眠
+                    Thread.sleep(3000);
                     logger.info("开始从队列中获取任务...");
                     task = get(cid);
                     if(task == null){
@@ -327,9 +331,6 @@ public class Spider {
                             new String[]{"id"},
                             new Object[]{task.getId()});
                     logger.info("更新任务" + task.getId() + "完成,状态为:" + falg);
-                    //现场休眠
-                    Thread.sleep(3000);
-                    System.out.println("现场休眠3s后继续....");
                 }catch (Exception e){
                     e.printStackTrace();
                     logger.error(e.getMessage());

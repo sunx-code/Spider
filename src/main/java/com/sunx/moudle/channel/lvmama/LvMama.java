@@ -86,7 +86,7 @@ public class LvMama implements IMonitor {
         try{
             //下载网页源码,解析其中的链接,并判断是否需要翻页
             //请求结果数据
-            String src = Helper.downlaoder(downloader,request.setUrl(link),site);
+            String src = Helper.downlaoder(downloader,request.setUrl(link),site,false);
             if(src == null || src.length() <= 0){
                 logger.error("下载数据异常,对应的链接地址为:" + link);
                 return;
@@ -137,7 +137,7 @@ public class LvMama implements IMonitor {
             }
             logger.info("驴妈妈的种子链接为:" + href);
         }
-//        factory.insert(Constant.DEFAULT_DB_POOL, tasks);
+        factory.insert(Constant.DEFAULT_DB_POOL, tasks);
     }
 
     /**

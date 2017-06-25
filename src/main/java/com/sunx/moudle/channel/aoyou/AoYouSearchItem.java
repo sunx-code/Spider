@@ -125,8 +125,13 @@ public class AoYouSearchItem implements IParser {
         JSONObject bean = JSON.parseObject(roomHtml);
         if(!bean.containsKey("pricetype"))return Constant.TASK_FAIL;
         Page roomPage = Page.me().bind(bean.getString("pricetype"));
+        Page numPage = Page.me().bind(bean.getString("numbertype"));
+        String value = numPage.css(".num_lable","value");
+        if(value == null || value.length() <= 0){
+            value = "1";
+        }
         //开始处理价格内容
-        return toPrice(factory,task,page,roomPage,pid);
+        return toPrice(factory,task,page,roomPage,pid,value);
     }
 
     /**
@@ -137,7 +142,7 @@ public class AoYouSearchItem implements IParser {
      * @param roomPage
      * @return
      */
-    public int toPrice(DBFactory factory,TaskEntity task,Page page,Page roomPage,String pid){
+    public int toPrice(DBFactory factory,TaskEntity task,Page page,Page roomPage,String pid,String value){
         //post请求的参数
         Map<String,String> map = new HashMap<>();
         map.put("productid",pid);
@@ -155,7 +160,7 @@ public class AoYouSearchItem implements IParser {
         if(!bean.containsKey("grouppircehtml"))return Constant.TASK_FAIL;
         Page pricePage = Page.me().bind(bean.getString("grouppircehtml"));
         //获取到具体的数据格式以后
-        return toSnapshot(factory,task,page,roomPage,pricePage);
+        return toSnapshot(factory,task,page,roomPage,pricePage,value);
     }
 
     /**
@@ -167,7 +172,7 @@ public class AoYouSearchItem implements IParser {
      * @param pricePage
      * @return
      */
-    public int toSnapshot(DBFactory factory,TaskEntity task,Page page,Page roomPage,Page pricePage){
+    public int toSnapshot(DBFactory factory,TaskEntity task,Page page,Page roomPage,Page pricePage,String value){
         //抽取出房型
         Node node = roomPage.$("[class=row_choose package_sec clearfix]:contains(房) div.row_item");
         //抽取出人员组成
@@ -184,7 +189,7 @@ public class AoYouSearchItem implements IParser {
 
             for(int j=0;j<people.size();j++){
                 //人员组成
-                String peopleType = people.css(j,"a");
+                String peopleType = value + "位" + people.css(j,"a");
                 //人员类型id
                 String pid = people.css(j,"a","id");
 

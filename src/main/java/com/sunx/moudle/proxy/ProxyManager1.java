@@ -5,44 +5,42 @@ import com.sunx.downloader.Downloader;
 import com.sunx.downloader.HttpClientDownloader;
 import com.sunx.downloader.Request;
 import com.sunx.downloader.Site;
-import com.sunx.spider.server.Spider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.PriorityBlockingQueue;
 
 /**
  *
  */
-public class ProxyManager {
-    //日志记录类
-    private static final Logger logger = LoggerFactory.getLogger(ProxyManager.class);
-    private PriorityBlockingQueue<IProxy> queue = new PriorityBlockingQueue<>(100,new MySort());
+public class ProxyManager1 {
+    private ConcurrentLinkedQueue<IProxy> queue = new ConcurrentLinkedQueue<IProxy>();
     private int DEFAULT_PROXY_TASK_DURATION = 1000 * 5;
     private Downloader downloader = new HttpClientDownloader();
     private Request request = new Request();
     private Site site = new Site();
-    //每个代理可用的时间
-    private static int PROXY_HAVING_TIME = 1000 * 30;
 
+    private static int MAX_SIZE = 20;
+    private static int MIN_SIZE = 10;
+
+    private ConcurrentHashMap<String,Integer> remove = new ConcurrentHashMap<>();
     /**
+     *
      */
     private static class SingleClass{
-        private static ProxyManager manager = new ProxyManager();
+        private static ProxyManager1 manager = new ProxyManager1();
     }
 
-    public static ProxyManager me(){
+    public static ProxyManager1 me(){
         return SingleClass.manager;
     }
 
     /**
      */
-    private ProxyManager(){
+    private ProxyManager1(){
         request.setUrl(Configuration.me().getString("proxy.url"));
         ProxyTask task = new ProxyTask();
         Timer timer = new Timer();
@@ -54,13 +52,29 @@ public class ProxyManager {
      */
     public IProxy poll(){
         IProxy proxy = queue.poll();
-        if(proxy == null || !proxy.isFlag())return null;
-        //是否已经使用超过30秒
-        long current = System.currentTimeMillis() - proxy.getCreateAt();
-        if(current > PROXY_HAVING_TIME || proxy.getCnt() > 180)return null;
-        proxy.setCnt(proxy.getCnt() + 1);
-        queue.offer(proxy);
+        if(proxy == null)return null;
+        if(remove.containsKey(proxy.getHost())){
+            //删除key,重新获取代理
+            remove.remove(proxy.getHost());
+            proxy = queue.poll();
+        }
         return proxy;
+    }
+
+    /**
+     * @param proxy
+     */
+    public void offer(IProxy proxy){
+        if(proxy != null || proxy.getHost() == null)return;
+        this.queue.offer(proxy);
+    }
+
+    /**
+     * 删除代理
+     * @param proxy
+     */
+    public void remove(IProxy proxy){
+        remove.put(proxy.getHost(),proxy.getPort());
     }
 
     /**
@@ -69,7 +83,7 @@ public class ProxyManager {
      */
     public void deal(String src){
         if(src == null || src.length() <= 5){
-            logger.info(src);
+            System.out.println(src);
             return;
         }
         String[] lines = src.split("[\n\r]");
@@ -84,16 +98,19 @@ public class ProxyManager {
                 IProxy proxy = new IProxy();
                 proxy.setHost(ip);
                 proxy.setPort(port);
-                proxy.setCnt(0);
-                proxy.setCreateAt(System.currentTimeMillis());
-                proxy.setFlag(true);
 
-                this.queue.offer(proxy);
+                if(this.queue.size() <= MAX_SIZE){
+                    this.queue.offer(proxy);
+                } else{
+//                    移除最早入队的数据
+                    this.queue.poll();
+                    offer(proxy);
+                }
             }catch (Exception e){
                 e.printStackTrace();
             }
         }
-        logger.info("当前代理队列的大小为：" + this.queue.size());
+        System.out.println("当前代理队列的大小为：" + this.queue.size());
     }
 
     /**
@@ -102,6 +119,7 @@ public class ProxyManager {
         @Override
         public void run() {
             try{
+                if(queue.size() > MIN_SIZE)return;
                 String src = downloader.downloader(request,site);
                 if(src == null || src.length() <= 0)return;
                 deal(src);
@@ -111,14 +129,7 @@ public class ProxyManager {
         }
     }
 
-    public class MySort implements Comparator<IProxy> {
-        @Override
-        public int compare(IProxy o1, IProxy o2) {
-            return (int)(o1.getCreateAt() - o2.getCreateAt());
-        }
-    }
-
     public static void main(String[] args){
-        ProxyManager.me();
+        ProxyManager1.me();
     }
 }
