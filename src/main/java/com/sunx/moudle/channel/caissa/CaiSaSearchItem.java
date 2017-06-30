@@ -60,15 +60,16 @@ public class CaiSaSearchItem implements IParser {
         try {
             logger.info("请求页面数据...");
             //请求页面数据
-            String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site,false);
+            String html = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(task.getUrl()),site,false);
             logger.info("截图该网页,保存数据到数据库中...");
             //截图该网页,保存数据到数据库中
             toSnapshot(factory,task,html);
             return Constant.TASK_SUCESS;
         } catch (Exception e) {
-            logger.error(e.getMessage());
-            return Constant.TASK_FAIL;
+            e.printStackTrace();
+            logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
+        return Constant.TASK_FAIL;
     }
 
     /**
@@ -105,6 +106,7 @@ public class CaiSaSearchItem implements IParser {
             factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
     }
 

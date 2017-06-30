@@ -29,11 +29,11 @@ public class Constant {
 
     public static final String DEFALUT_REGION = "Unknow";
 
-    public static final int DEFAULT_TIME_OUT = 10000;
-
     public static final String TEMPLATE_FILE_LIST_PATH = "conf/template";
 
 
     public static final String DEFAULT_ENCODING = "UTF-8";
+
+    public static final String PROXY_LOAD_DURATION_KEY = "proxy.load.duarion";
 
 }

@@ -77,7 +77,7 @@ public class AliHotelsItem  implements IParser {
         site.addHeader("Accept","*/*");
         site.addHeader("Accept-Encoding","gzip, deflate, sdch");
         site.addHeader("Accept-Language","zh-CN,zh;q=0.8,en;q=0.6");
-        site.addHeader("User-Agent","Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36");
+        site.addHeader("User-Agent","Dalvik/2.1.0 (Linux; U; Android 6.0; KNT-UL10 Build/HUAWEIKNT-UL10)");
         //设置保存cookie
         site.setIsSave(true).setTimeOut(10000);
     }
@@ -91,6 +91,9 @@ public class AliHotelsItem  implements IParser {
     public int parser(DBFactory factory,TaskEntity task) {
         //开始下载处理数据
         try{
+            h5_tk = "";
+            h5_tk_enc = "";
+            h5_tk_time = "" + System.currentTimeMillis();
             int cnt = toParse(factory,task);
             logger.info("开始更新数据状态...");
             if(cnt < 0){
@@ -117,7 +120,7 @@ public class AliHotelsItem  implements IParser {
             //改动搜索参数data
             String dataStr = toSearchData(param);
             //获取下载的网页内容
-            String src = getSrc(SEARCH_DATA_URL,dataStr);
+            String src = getSrc(task,false,SEARCH_DATA_URL,dataStr);
             if(src == null || src.length() <= 0)return Constant.TASK_FAIL;
             if(src.contains("FAIL_SYS")){
                 logger.info("处理搜索数据错误 -> " + src);
@@ -129,7 +132,7 @@ public class AliHotelsItem  implements IParser {
             //获取到搜索数据以后,开始进行详情数据的获取
             logger.info("下载数据完成,开始处理数据.....");
             //格式化数据为json
-            JSONObject bean = toSearchDetail(param,src);
+            JSONObject bean = toSearchDetail(task,param,src);
             if(bean == null)return Constant.TASK_FAIL;
             JSONObject data = bean.getJSONObject("data");
             //开始处理第一个网页快照内容
@@ -138,6 +141,7 @@ public class AliHotelsItem  implements IParser {
             return dealData(factory,task,data,snapshot);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -148,7 +152,7 @@ public class AliHotelsItem  implements IParser {
      * @param src
      * @return
      */
-    public JSONObject toSearchDetail(JSONObject param,String src){
+    public JSONObject toSearchDetail(TaskEntity task,JSONObject param,String src) throws Exception{
         JSONObject bean = JSON.parseObject(src);
         //开始获取key
         JSONObject dataBean = bean.getJSONObject("data");
@@ -160,8 +164,13 @@ public class AliHotelsItem  implements IParser {
         String detailData = toData(param,searchId);
 
         //开始处理详情数据内容
+        try{
+            Thread.sleep(2000);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
         //获取下载的网页内容
-        String html = getSrc(ALI_HOTEL_URL,detailData);
+        String html = getSrc(task,true,ALI_HOTEL_URL,detailData);
         if(html == null || html.length() <= 0)return null;
         if(html.contains("FAIL_SYS")){
             logger.info("处理详情数据内容 -> " + html);
@@ -250,8 +259,6 @@ public class AliHotelsItem  implements IParser {
             resultEntity.setId(md5);
             resultEntity.setCheckInDate(task.getCheckInDate().replaceAll("-",""));
             resultEntity.setChannelName(task.getChannelName());
-            resultEntity.setHouseType(null);
-            resultEntity.setPeopleType(null);
             resultEntity.setRegion(region);
             resultEntity.setTid(task.getId());
             resultEntity.setUrl(task.getUrl());
@@ -263,6 +270,7 @@ public class AliHotelsItem  implements IParser {
             return Constant.TASK_SUCESS;
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("保存快照出现错误,错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -326,6 +334,7 @@ public class AliHotelsItem  implements IParser {
                 html.append(template);
             }catch (Exception e){
                 e.printStackTrace();
+                logger.error("遍历房型数据内容出现错误:" + roomTypes.toJSONString() + ",错误信息为:" + e.getMessage());
             }
         }
     }
@@ -334,7 +343,7 @@ public class AliHotelsItem  implements IParser {
      * @param data
      * @return
      */
-    public String getSrc(String url,String data){
+    public String getSrc(TaskEntity task,boolean flag,String url,String data){
         String page = null;
         int index = 0;
         while(index <= 2){
@@ -343,7 +352,8 @@ public class AliHotelsItem  implements IParser {
                     site.addHeader("Cookie", "_m_h5_tk=" + h5_tk + "_" + h5_tk_time + "; _m_h5_tk_enc=" + h5_tk_enc + ";");
                 }
                 String link = getUrl(url,data, h5_tk, appkey);
-                page = Helper.downlaoder(downloader,request.setUrl(link), site);
+                if(flag){task.setUrl(link);}
+                page = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(link), site);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
                     //说明数据失败,需要重新抓取
@@ -351,7 +361,7 @@ public class AliHotelsItem  implements IParser {
                     index++;
 
                     try{
-                        Thread.sleep(1000);
+                        Thread.sleep(3000);
                     }catch (Exception e){
                         e.printStackTrace();
                     }

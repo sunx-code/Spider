@@ -34,9 +34,9 @@ public class AliTripSearchItem implements IParser {
     //格式化日期数据
     private SimpleDateFormat fs = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
     //默认的token
-    private String h5_tk = "6eb1b2995236e0a5401e37c1125e53bd";//1f5ffe425695856baeba3403e9766c6a
-    private String h5_tk_enc = "617850adca5beb0d1c8f23708667482c";//ed4dcd762a714dacdd6e4268eb592bce
-    private String h5_tk_time = "1498028667009";// + System.currentTimeMillis();
+    private String h5_tk = "";//1f5ffe425695856baeba3403e9766c6a
+    private String h5_tk_enc = "";//ed4dcd762a714dacdd6e4268eb592bce
+    private String h5_tk_time = "";// + System.currentTimeMillis();
     //key
     private String appkey = "12574478";
 
@@ -67,6 +67,8 @@ public class AliTripSearchItem implements IParser {
      */
     public int parser(DBFactory factory, TaskEntity task) {
         try{
+            //id
+            String id = task.getUrl();
             //获取下载的网页内容
             String src = getSrc(task);
             if(src == null || src.length() <= 0)return -1;
@@ -83,9 +85,10 @@ public class AliTripSearchItem implements IParser {
             if(bean == null)return Constant.TASK_FAIL;
             JSONObject data = bean.getJSONObject("data");
             //解析内容,并将相应的数据插入到数据库中
-            return toSnapshot(factory,task,data);
+            return toSnapshot(factory,task,data,id);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -97,7 +100,7 @@ public class AliTripSearchItem implements IParser {
      * @param data
      * @return
      */
-    public int toSnapshot(DBFactory factory,TaskEntity task,JSONObject data){
+    public int toSnapshot(DBFactory factory,TaskEntity task,JSONObject data,String itemId){
         try{
             //封装html
             String html = toHtml(data.toJSONString());
@@ -119,7 +122,7 @@ public class AliTripSearchItem implements IParser {
             resultEntity.setChannelName(task.getChannelName());
             resultEntity.setRegion(region);
             resultEntity.setTid(task.getId());
-            resultEntity.setUrl(BASE_URL + task.getUrl());
+            resultEntity.setUrl(BASE_URL + itemId);
             resultEntity.setVday(vday);
             resultEntity.setPath(htmPath);
 
@@ -127,6 +130,7 @@ public class AliTripSearchItem implements IParser {
             return Constant.TASK_SUCESS;
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("任务id:" + task.getId() + ",保存快照出现错误,错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -159,7 +163,8 @@ public class AliTripSearchItem implements IParser {
                     site.addHeader("Cookie", "_m_h5_tk=" + h5_tk + "_" + h5_tk_time + "; _m_h5_tk_enc=" + h5_tk_enc + ";");
                 }
                 String link = getUrl(task, h5_tk, appkey);
-                page = Helper.downlaoder(downloader,request.setUrl(link), site,false);
+                task.setUrl(link);
+                page = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(link), site);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
                     //说明数据失败,需要重新抓取
@@ -167,7 +172,7 @@ public class AliTripSearchItem implements IParser {
                     index++;
 
                     try{
-                        Thread.sleep(1500);
+                        Thread.sleep(5000);
                     }catch (Exception e){
                         e.printStackTrace();
                     }

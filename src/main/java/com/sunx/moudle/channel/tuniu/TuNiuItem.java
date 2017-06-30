@@ -85,7 +85,7 @@ public class TuNiuItem implements IParser {
     public int parser(DBFactory factory, TaskEntity task) {
         try{
             //开始请求网站首页,获取网页源码
-            String src = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site,false);
+            String src = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(task.getUrl()),site,false);
             if(src == null || src.length() <= 0){
                 logger.error("下载网页源码失败.链接地址为:" + task.getUrl());
                 return Constant.TASK_FAIL;
@@ -105,6 +105,7 @@ public class TuNiuItem implements IParser {
             toSnapshot(factory,src,html,task,2,1);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("下载错误,链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_SUCESS;
     }
@@ -183,7 +184,7 @@ public class TuNiuItem implements IParser {
             //请求酒店数据
             String link = find(HOTEL_SEARCH_URL,task.getCheckInDate(),pro,adultNum,childNum);
             //下载数据
-            String src = Helper.downlaoder(downloader,request.setUrl(link),site);
+            String src = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(link),site);
             //处理当前酒店数据
             if (src == null || src.length() <= 0) {
                 logger.info("当前集合可能为空...线程休眠一定时间后接续...");
@@ -196,7 +197,7 @@ public class TuNiuItem implements IParser {
             if(hotelInfo == null)return null;
             JSONArray bean = hotelInfo.getJSONArray("rooms");
             //获取卡券的数据
-            JSONObject tec = findTec(hotel,task.getCheckInDate(),pro,adultNum,childNum);
+            JSONObject tec = findTec(task,hotel,task.getCheckInDate(),pro,adultNum,childNum);
             //获取卡券的价格
             int tecPrice = getPrice(tec,task.getCheckInDate(),adultNum,childNum);
             //更新人物对应的地区
@@ -450,7 +451,7 @@ public class TuNiuItem implements IParser {
      * @param pro
      * @return
      */
-    private JSONObject findTec(JSONObject hotels, String day, String pro, int adultNum, int childNum){
+    private JSONObject findTec(TaskEntity task,JSONObject hotels, String day, String pro, int adultNum, int childNum){
         try{
             //获取对应的journeyId
             String jid = hotels.getString("journeyId").replaceAll("j_","");
@@ -465,7 +466,7 @@ public class TuNiuItem implements IParser {
                     .addPostData("postData[departDate]",day)
                     .addPostData("postData[journeyId]",jid);
             //下载数据,并判断数据
-            String src = Helper.downlaoder(downloader,request.setUrl(KAQUAN_SEARCH_URL),site);
+            String src = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(KAQUAN_SEARCH_URL),site);
             if(src == null || src.length() <= 0){
                 logger.info("下载数据异常,需要处理异常数据..");
                 return null;

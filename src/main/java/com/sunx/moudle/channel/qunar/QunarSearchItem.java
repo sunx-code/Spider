@@ -75,7 +75,7 @@ public class QunarSearchItem implements IParser {
         //请求头
         site.addHeader("accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
         site.addHeader("accept-encoding","gzip, deflate, sdch, br");
-        site.addHeader("user-agent","Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Mobile Safari/537.36");
+        site.addHeader("user-agent","QSpiderAndroid");
 
         //设置超时时间
         site.setTimeOut(10000);
@@ -93,25 +93,25 @@ public class QunarSearchItem implements IParser {
     public int parser(DBFactory factory, TaskEntity task) {
         /** 根据请求进行数据的解析 **/
         //第一步,请求网页源码,获取到解析酒店详情的基本数据
-        String page = Helper.downlaoder(downloader,request.setUrl(HOTEL_URL + task.getUrl()),site);
+        String page = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(HOTEL_URL + task.getUrl()),site);
         //对下载到的数据进行判定
         if(page == null || page.length() <= 0){
             logger.error("下载酒店详情网页源码失败.任务链接对象为:" + request.getUrl());
             return Constant.TASK_FAIL;
         }
         try{
-            Thread.sleep(2000);
+            Thread.sleep(3000);
         }catch (Exception e){
             e.printStackTrace();
         }
         //修改请求头
         site.addHeader("Referer",request.getUrl());
         //下载到网页源码后,需要进行房型数据的下载
-        String rooms = Helper.downlaoder(downloader,request.setUrl(ROOM_TYPE_URL + "&" + task.getUrl()),site);
+        String rooms = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(ROOM_TYPE_URL + "&" + task.getUrl()),site);
         //对下载到的数据进行判定
         if(rooms == null || rooms.length() <= 0){
-            logger.error("下载房间数据源码失败.任务链接对象为:" + request.getUrl());
-            return Constant.TASK_FAIL;
+             logger.error("下载房间数据源码失败.任务链接对象为:" + request.getUrl());
+             return Constant.TASK_FAIL;
         }
         //开始根据不同的方形进行数据的整理
         StringBuffer roomHtml = parse(task,rooms);
@@ -142,7 +142,7 @@ public class QunarSearchItem implements IParser {
             for(int i=0;i<array.size();i++){
                 try{
                     //现场休眠1.5s后进行数据下载
-                    Thread.sleep(2000);
+                    Thread.sleep(5000);
                     //获取第i个对象
                     JSONObject node = array.getJSONObject(i);
                     //抽取出对应的房间名称
@@ -153,7 +153,7 @@ public class QunarSearchItem implements IParser {
                     String lowPrice = node.getString("lowPrice");
 
                     //找到房型以后,开始处理对应房型下的价格问题
-                    String price = Helper.downlaoder(downloader,request.setUrl(PRICE_URL + "&" + task.getUrl() + "&room=" + name),site);
+                    String price = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(PRICE_URL + "&" + task.getUrl() + "&room=" + name),site);
                     if(price == null)continue;
                     //开始处理这个价格对应的网页内容,格式化为json对象
                     JSONObject priceBean = JSON.parseObject(price);
@@ -186,6 +186,7 @@ public class QunarSearchItem implements IParser {
             }
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("下载错误,链接为:" + task.getUrl() + "下载错误,对应的数据内容为:" + rooms + ",错误信息为:" + e.getMessage());
         }
         return buffer;
     }
@@ -380,10 +381,10 @@ public class QunarSearchItem implements IParser {
         TaskEntity taskEntity = new TaskEntity();
         taskEntity.setChannelId(5);
         taskEntity.setChannelName("去哪儿");
-        taskEntity.setCheckInDate("2017-06-19");
+        taskEntity.setCheckInDate("2017-07-19");
         taskEntity.setRegion("三亚");
         taskEntity.setSleep(3);
-        taskEntity.setUrl("d=123&seq=sanya_12418&checkInDate=2017-06-19&checkOutDate=2017-06-22");
+        taskEntity.setUrl("d=123&seq=sanya_12418&checkInDate=2017-07-19&checkOutDate=2017-07-22");
 
         new QunarSearchItem().parser(null,taskEntity);
     }

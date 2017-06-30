@@ -42,7 +42,7 @@ public class Spider {
     //缓存数据添加时间间隔
     private int QUEUE_ADD_DURATION = 10000;
     //最小时间间隔
-    private int MAX_DURATION = 10000;
+    private int MAX_DURATION = 5000;
     //线程锁
     private Lock lock = new ReentrantLock();
     //基础类包
@@ -145,7 +145,8 @@ public class Spider {
             taskEntity.setStatus(Constant.TASK_NEW);
             taskEntity.setChannelId(cid);
 
-            List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,taskEntity);
+            List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,
+                    "select * from " + DBUtils.table(taskEntity) + " where date(createAt) = date(now()) and cid = " + cid,TaskEntity.class);
             if(tasks == null){
                 logger.error("渠道" + cid + "数据拉去为空. 对应的缓存大小为:" + queue.get(cid).size());
                 return;
@@ -304,6 +305,7 @@ public class Spider {
 
         @Override
         public void run() {
+            int sleep = Configuration.me().getInt("thread.sleep.time");
             String tableName = null;
             while(true){
                 //从缓存中读取一个任务对象
@@ -311,7 +313,7 @@ public class Spider {
                 try{
                     logger.info("现场休眠3s后继续....");
                     //现场休眠
-                    Thread.sleep(3000);
+                    Thread.sleep(sleep);
                     logger.info("开始从队列中获取任务...");
                     task = get(cid);
                     if(task == null){
@@ -382,11 +384,11 @@ public class Spider {
             if(tasks == null || tasks.size() <= 0)return null;
             logger.info("获取任务完成,开始处理任务...");
             TaskEntity task = tasks.remove(0);
-            long sleep = sleepTime(task);
-            if(sleep > 0){
-                logger.info("现场休眠" + sleep + "ms后继续....");
-                Thread.sleep(sleep);
-            }
+//            long sleep = sleepTime(task);
+//            if(sleep > 0){
+//                logger.info("现场休眠" + sleep + "ms后继续....");
+//                Thread.sleep(sleep);
+//            }
             return task;
         }catch (Exception e){
             e.printStackTrace();

@@ -75,6 +75,7 @@ public class LvMamaSearchItem implements IParser {
             return dealFreeData(factory,task);//表示自由行
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("任务id:" + task.getId() + "对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -86,7 +87,8 @@ public class LvMamaSearchItem implements IParser {
      */
     public int dealFreeData(DBFactory factory, TaskEntity task) throws Exception {
         //下载首页
-        String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()),site);
+        String html = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(task.getUrl()),site);
+        if(html == null)return Constant.TASK_FAIL;
         //从网页源码中抽取出成人数,儿童数,请求数据
         Page page = Page.me().bind(html);
         //成人数
@@ -101,8 +103,9 @@ public class LvMamaSearchItem implements IParser {
                 proId = Helper.clean(proId,"[^0-9]","");
             }                     
         }
+        if(adultNum == null || childNum == null || proId == null)return Constant.TASK_FAIL;
         //获取价格数据
-        String detailHtml = toDetail(task.getCheckInDate(),proId,adultNum,childNum);
+        String detailHtml = toDetail(task,task.getCheckInDate(),proId,adultNum,childNum);
         //开始抽取出总价格
         Page pricePage = Page.me().bind(detailHtml);
         int price = toPrice(pricePage);
@@ -117,7 +120,7 @@ public class LvMamaSearchItem implements IParser {
      * @param pricePage
      * @return
      */
-    public int toPrice(Page pricePage){
+    public int toPrice(Page pricePage) throws Exception{
         //获取默认价格
         String priceStr = pricePage.css(".default div[class=package-item adjust-product-item package-button-div]","data-price");
         //剔除保险等数据的价格
@@ -137,7 +140,7 @@ public class LvMamaSearchItem implements IParser {
      * @param childNum
      * @return
      */
-    public String toDetail(String checkInDay,String proId,String adultNum,String childNum){
+    public String toDetail(TaskEntity task,String checkInDay,String proId,String adultNum,String childNum){
         try{
             logger.info(proId + "\t" + adultNum + "\t" + childNum);
             String link = DETAIL_URL.replaceAll("CHECK_IN_DAY",checkInDay)
@@ -148,9 +151,10 @@ public class LvMamaSearchItem implements IParser {
             site.addHeader("Content-Type","application/json;charset=utf-8");
             site.addHeader("Referer","http://dujia.lvmama.com/package/" + proId);
 
-            return Helper.downlaoder(downloader,request.setUrl(link),site,false);
+            return Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(link),site,false);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("下载错误,对应的数据内容为:" + proId + "\t" + adultNum + "\t" + childNum + ",错误信息为:" + e.getMessage());
         }
         return null;
     }

@@ -1,5 +1,7 @@
 package com.sunx.moudle.channel.wowoyoo;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.constant.Constant;
 import com.sunx.downloader.*;
@@ -8,6 +10,8 @@ import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
 import com.sunx.moudle.enums.ImageType;
+import com.sunx.moudle.proxy.IProxy;
+import com.sunx.moudle.proxy.ProxyManager;
 import com.sunx.storage.DBConfig;
 import com.sunx.storage.DBFactory;
 import com.sunx.storage.pool.DuridPool;
@@ -62,26 +66,76 @@ public class WowoYooSearchItem implements IParser {
         site.addHeader("accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
         site.addHeader("accept-encoding","gzip, deflate, sdch, br");
         site.addHeader("Content-Type","application/x-www-form-urlencoded");
-        site.addHeader("user-agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36");
+//        site.addHeader("user-agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36");
 
         logger.info("开始访问地区首页:" + task.getRegion());
-        //访问地点的首页数据
-        String src = Helper.downlaoder(downloader,request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),site.setTimeOut(10000));
-        //找到相应的位置,进行填写数据后模拟点击
-        return dealData(src,factory,task);
-    }
-
-    private int dealData(String src,DBFactory factory,TaskEntity task) {
+//        int k = 0;
+//        String src = null;
+//        while(k < 3){
+//            int i=0;
+//            IProxy proxy = ProxyManager.me().poll();
+//            while(proxy == null){
+//                proxy = ProxyManager.me().poll();
+//                if(proxy == null){
+//                    i++;
+//                    //获取代理超过一定的次数,直接跳出
+//                    if(i >= 5)break;
+//                    try{
+//                        logger.info("获取代理失败,线程需要休眠1.5s后继续....");
+//                        Thread.sleep(1500);
+//                    }catch ( Exception e){
+//                        e.printStackTrace();
+//                    }
+//                    continue;
+//                }
+//                break;
+//            }
+//            if(proxy == null){
+//                proxy = new IProxy();
+//            }
+//            logger.info("获取代理完毕,开始进行下载...");
+//            //访问地点的首页数据
+//            src = downloader.downloader(request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),
+//                    site.setTimeOut(8000),
+//                    proxy.getHost(),
+//                    proxy.getPort());
+//            if(src == null || src.length() <= 0){
+//                logger.error("下载出现错误,需要重新下载,参数为 -> 地区：" + Helper.toJSON(map));
+////                task.getRegion() +",成人数:"
+////                        + task.getAdultNum() +",类型:"
+////                        + task.getPeopleType() + ",入住日期:" + task.getCheckInDate()
+//                k++;
+//                continue;
+//            }
+//            break;
+//        }
+        String src = Helper.downlaoder(task.getChannelId(),downloader,
+                                       request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),
+                                       site.setTimeOut(8000));
         //对数据进行判定
         if(src == null || src.length() <= 0){
             logger.error("下载出现错误,地区：" + task.getRegion() +",成人数:" + task.getAdultNum() +",类型:" + task.getPeopleType() + ",入住日期:" + task.getCheckInDate());
             return Constant.TASK_FAIL;
         }
+        //找到相应的位置,进行填写数据后模拟点击
+        return dealData(src,factory,task);
+    }
+
+    /**
+     *
+     * @param src
+     * @param factory
+     * @param task
+     * @return
+     */
+    private int dealData(String src,DBFactory factory,TaskEntity task) {
+        logger.info("将网页源码中的图片地址,以及css地址,js地址补全");
         //将网页源码中的图片地址,以及css地址,js地址补全
         String html = all(src);
+        logger.info("补全网页后,讲数据保存");
         //补全网页后,讲数据保存
         save(html,factory,task);
-
+        logger.info("返回任务状态.....");
         return Constant.TASK_SUCESS;
     }
 

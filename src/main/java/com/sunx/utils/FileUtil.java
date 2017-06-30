@@ -61,7 +61,7 @@ public class FileUtil {
 			StringBuffer buffer = new StringBuffer();
 			String line = null;
 			while((line = br.readLine()) != null){
-				buffer.append(line);
+				buffer.append(line + "\n");
 			}
 			return buffer.toString();
 		}catch (Exception e){

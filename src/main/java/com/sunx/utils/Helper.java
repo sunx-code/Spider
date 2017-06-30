@@ -1,11 +1,16 @@
 package com.sunx.utils;
 
+import com.alibaba.fastjson.JSONObject;
+import com.sunx.constant.Configuration;
+import com.sunx.constant.Constant;
 import com.sunx.downloader.Downloader;
 import com.sunx.downloader.Request;
 import com.sunx.downloader.Site;
 import com.sunx.moudle.proxy.IProxy;
 import com.sunx.moudle.proxy.ProxyManager;
+import com.sunx.parser.Page;
 
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -126,6 +131,17 @@ public class Helper {
     }
 
     /**
+     * 下载数据
+     * @param downloader
+     * @param request
+     * @param site
+     * @return
+     */
+    public static String downlaoder(long cid,Downloader downloader, Request request,Site site){
+        return downlaoder(cid,downloader,request,site,true);
+    }
+
+    /**
      * 具体的是否使用代理进行网页源码的下载
      * @param downloader
      * @param request
@@ -134,19 +150,34 @@ public class Helper {
      * @return
      */
     public static String downlaoder(Downloader downloader, Request request,Site site,boolean flag){
+        return downlaoder(-1l,downloader,request,site,flag);
+    }
+    /**
+     * 具体的是否使用代理进行网页源码的下载
+     * @param downloader
+     * @param request
+     * @param site
+     * @param flag
+     * @return
+     */
+    public static String downlaoder(long cid,Downloader downloader, Request request,Site site,boolean flag){
         String src = null;
         try{
             int j = 0;
             while(j <= 3){
+                j++;
                 //获取代理
                 IProxy proxy = null;
                 if(flag){
                     int i = 0;
-                    while(proxy == null || i < 5){
-                        proxy = ProxyManager.me().poll();
+                    while(proxy == null){
+                        proxy = ProxyManager.me().poll(cid);
                         if(proxy == null){
                             i++;
+                            //获取代理超过一定的次数,直接跳出
+                            if(i >= 10)break;
                             try{
+                                System.out.println(Thread.currentThread().getName() + " -> 获取代理失败,线程需要休眠1.5s后继续....");
                                 Thread.sleep(1500);
                             }catch ( Exception e){
                                 e.printStackTrace();
@@ -158,13 +189,25 @@ public class Helper {
                 }
                 if(proxy == null){
                     proxy = new IProxy();
+                }else if(cid != -1){
+                    try{
+                        long current = System.currentTimeMillis();
+                        long last = proxy.get(cid);
+                        long sleep = Configuration.me().getLong(Constant.PROXY_LOAD_DURATION_KEY) - (current - last);
+                        if(sleep > 0){
+                            System.err.println("渠道" + cid + "使用代理(" + proxy.getHost() + "," + proxy.getPort() + "),使用太频繁,需要休眠" + sleep + "ms后继续...");
+                            Thread.sleep(sleep);
+                        }
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }
                 }
                 src = downloader.downloader(request,site,proxy.getHost(),proxy.getPort());
+                proxy.put(cid,System.currentTimeMillis());
                 if(src == null && flag){
                     proxy.setFlag(false);
                     continue;
                 }
-                j++;
                 break;
             }
         }catch (Exception e){
@@ -240,5 +283,30 @@ public class Helper {
         for (int i = 0; i < indent; i++) {
             sb.append('\t');
         }
+    }
+
+    /**
+     *
+     * @param source
+     * @return
+     */
+    public static String toHtml(String source){
+        Page page = Page.me().bind(source);
+        page.remove("meta[http-equiv=Content-Type]");
+        page.append("head","<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\">");
+        return page.html();
+    }
+
+    /**
+     *
+     * @param map
+     * @return
+     */
+    public static String toJSON(Map<String,String> map){
+        JSONObject bean = new JSONObject();
+        for(Map.Entry<String,String> entry : map.entrySet()){
+            bean.put(entry.getKey(),entry.getValue());
+        }
+        return bean.toJSONString();
     }
 }

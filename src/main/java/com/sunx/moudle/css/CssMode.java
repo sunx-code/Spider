@@ -1,8 +1,10 @@
 package com.sunx.moudle.css;
 
 import com.sunx.entity.CNode;
+import com.sunx.utils.FileUtil;
 import com.sunx.utils.Helper;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -104,7 +106,7 @@ public class CssMode {
     //抽取数字内容,包含负号,点
     private static Pattern pattern = Pattern.compile("-?\\d+\\.?\\d*");
     //对应的tanslate的抽取内容
-    private static Pattern translate = Pattern.compile("(\\d+)(?:px)");
+    private static Pattern translate = Pattern.compile("(-?\\d+)(?:(px)?)");
 
     private static class SingleClass{
         private static CssMode mode = new CssMode();
@@ -344,9 +346,10 @@ public class CssMode {
 
 
     public static void main(String[] args){
-//        String str = ".qunar_mix span.price i.qmacf0943b{left: 11px;line-height: 1;background: none;}";
-//        String str = ".qunar_mix span.price i.qmca340bd1{left: 11px; margin-left:11px; padding-left:11px; background:none;}";
-        String str = ".qunar_mix span.price i.qm1490a6ac {left: 0px;text-indent: 0.5em;background: none;}";
+//        String str = ".qunar_mix span.price i.qm1490a6ac {left: 0px;text-indent: 0.5em;background: none;}";
+
+        String str = FileUtil.readerByFile(new File("conf/css/qunar-css.css"),"UTF-8");
+        System.out.println(str);
 
         Map<Integer,CNode> index = CssMode.me().mode(str);
         for(Map.Entry<Integer,CNode> i : index.entrySet()){

@@ -2,6 +2,7 @@ package com.sunx.moudle.channel.aoyou;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
+import com.sunx.constant.Configuration;
 import com.sunx.constant.Constant;
 import com.sunx.downloader.*;
 import com.sunx.entity.ResultEntity;
@@ -71,7 +72,8 @@ public class AoYouSearchItem implements IParser {
         try{
             logger.info("开始处理数据:" + task.getUrl());
             //请求页面数据
-            String html = Helper.downlaoder(downloader,request.setUrl(task.getUrl()).setMethod(Method.GET),site.setTimeOut(1000 * 10),false);
+            String html = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(task.getUrl()).setMethod(Method.GET),site.setTimeOut(1000 * 10));
+            if(html == null)return Constant.TASK_FAIL;
             Page page = Page.me().bind(html);
             //开始请求,获取价格的请求参数
             //抽取出商品id
@@ -88,13 +90,15 @@ public class AoYouSearchItem implements IParser {
             map.put("year",year);
             map.put("month",m);
             //开始请求,获取价格请求参数
-            String priceParam = Helper.downlaoder(downloader,request.setUrl(PRICE_URL).setMethod(Method.POST).setPostData(map),site,false);
+            String priceParam = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(PRICE_URL).setMethod(Method.POST).setPostData(map),site);
+            if(priceParam == null )return Constant.TASK_FAIL;
             //格式化对象
             String param = Page.me().bind(priceParam).css("#h_fpd","value");
             //根据不同的类型,自助游还是自由行还是酒店+景点来进行数据的分离处理
             return toDetail(factory,task,page,pid,param,type);
         }catch (Exception e){
-            logger.error(e.getMessage());
+            e.printStackTrace();
+            logger.error("任务id:" + task.getId() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -106,7 +110,7 @@ public class AoYouSearchItem implements IParser {
      * @param page
      * @return
      */
-    public int toDetail(DBFactory factory,TaskEntity task,Page page,String pid,String param,String type){
+    public int toDetail(DBFactory factory,TaskEntity task,Page page,String pid,String param,String type) throws Exception{
         //post请求的参数
         Map<String,String> map = new HashMap<>();
         map.put("productid",pid);
@@ -116,10 +120,9 @@ public class AoYouSearchItem implements IParser {
         site.addHeader("Referer",task.getUrl());
 
         //获取到商品id以后,开始获取基础的房型数据
-        String roomHtml = Helper.downlaoder(downloader,
+        String roomHtml = Helper.downlaoder(task.getChannelId(),downloader,
                                             request.setUrl(SEARCH_ROOMS_URL).setMethod(Method.POST).setPostData(map),
-                                            site.setTimeOut(1000 * 10),false
-                                           );
+                                            site.setTimeOut(1000 * 10));
         //对网页源码进行盘点
         if(roomHtml == null)return Constant.TASK_FAIL;
         JSONObject bean = JSON.parseObject(roomHtml);
@@ -142,7 +145,7 @@ public class AoYouSearchItem implements IParser {
      * @param roomPage
      * @return
      */
-    public int toPrice(DBFactory factory,TaskEntity task,Page page,Page roomPage,String pid,String value){
+    public int toPrice(DBFactory factory,TaskEntity task,Page page,Page roomPage,String pid,String value) throws Exception{
         //post请求的参数
         Map<String,String> map = new HashMap<>();
         map.put("productid",pid);
@@ -150,7 +153,7 @@ public class AoYouSearchItem implements IParser {
         map.put("enddate",task.getCheckOutDate().replaceAll("-","/"));
 
         //获取到商品id以后,开始获取基础的房型数据
-        String priceHtml = Helper.downlaoder(downloader,
+        String priceHtml = Helper.downlaoder(task.getChannelId(),downloader,
                 request.setUrl(SEARCH_ROOMS_DETAIL_URL).setMethod(Method.POST).setPostData(map),
                 site.setTimeOut(1000 * 10),false
         );
@@ -172,7 +175,7 @@ public class AoYouSearchItem implements IParser {
      * @param pricePage
      * @return
      */
-    public int toSnapshot(DBFactory factory,TaskEntity task,Page page,Page roomPage,Page pricePage,String value){
+    public int toSnapshot(DBFactory factory,TaskEntity task,Page page,Page roomPage,Page pricePage,String value) throws Exception{
         //抽取出房型
         Node node = roomPage.$("[class=row_choose package_sec clearfix]:contains(房) div.row_item");
         //抽取出人员组成
@@ -292,6 +295,7 @@ public class AoYouSearchItem implements IParser {
             factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("任务id:" + task.getId() + "保存快照错误,错误信息为:" + e.getMessage());
         }
     }
 

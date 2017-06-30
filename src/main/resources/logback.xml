@@ -1,39 +1,89 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <configuration>
-    <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
-    <property name="LOG_HOME" value="logs/" />
-    <!-- 控制台输出 -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <!-- 日志输出编码 -->
-        <Encoding>UTF-8</Encoding>
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n
+        <!-- encoders are assigned by default the type ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
             </pattern>
-        </layout>
+        </encoder>
     </appender>
-    <!-- 按照每天生成日志文件 -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <Encoding>UTF-8</Encoding>
+    <appender name="info"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!--日志文件输出的文件名-->
-            <FileNamePattern>${LOG_HOME}/logger.%d{yyyy-MM-dd}.log</FileNamePattern>
-            <MaxHistory>30</MaxHistory>
+            <!-- daily rollover -->
+            <fileNamePattern>logs/info.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- keep 30 days worth of history -->
+            <maxHistory>30</maxHistory>
+            <maxFileSize>20MB</maxFileSize>
         </rollingPolicy>
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder
+        by default -->
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} %-5level %logger{35} - %msg%n
             </pattern>
-        </layout>
-        <!--日志文件最大的大小-->
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <MaxFileSize>10MB</MaxFileSize>
-        </triggeringPolicy>
+        </encoder>
+    </appender>
+    <appender name="warn"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/warn.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>logs/warn.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- keep 30 days worth of history -->
+            <maxHistory>30</maxHistory>
+            <maxFileSize>20MB</maxFileSize>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder
+        by default -->
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} %-5level %logger{35} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+    <appender name="error"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- daily rollover -->
+            <fileNamePattern>logs/error.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- keep 30 days worth of history -->
+            <maxHistory>30</maxHistory>
+            <maxFileSize>20MB</maxFileSize>
+        </rollingPolicy>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <!-- encoders are assigned the type ch.qos.logback.classic.encoder.PatternLayoutEncoder
+        by default -->
+        <encoder>
+            <pattern>
+                %d{yyyy/MM/dd-HH:mm:ss} %level [%thread] %caller{1} - %msg%n
+                <!--%d{HH:mm:ss.SSS} %-5level %logger{35} - %msg%n-->
+            </pattern>
+        </encoder>
     </appender>
 
-    <!-- 日志输出级别 -->
-    <root level="INFO">
+    <root level="info">
+        <appender-ref ref="info"></appender-ref>
+        <appender-ref ref="warn"></appender-ref>
+        <appender-ref ref="error"></appender-ref>
         <appender-ref ref="STDOUT" />
-        <appender-ref ref="FILE" />
     </root>
+
 </configuration>

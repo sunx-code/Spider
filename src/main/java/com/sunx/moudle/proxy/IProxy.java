@@ -1,5 +1,8 @@
 package com.sunx.moudle.proxy;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  *
  */
@@ -10,6 +13,8 @@ public class IProxy {
     private long createAt;
     private int cnt;
     private boolean flag = true;
+
+    private Map<Long,Long> use = new HashMap<>();
 
     public IProxy(){}
 
@@ -63,5 +68,22 @@ public class IProxy {
 
     public void setFlag(boolean flag) {
         this.flag = flag;
+    }
+
+    public void put(long key,long time){
+        use.put(key,time);
+    }
+
+    public long get(long key){
+        if(!use.containsKey(key)){
+            put(key,0l);
+        }
+        return use.get(key);
+    }
+
+    public boolean contains(long cid){
+        if(cid < 0)return false;
+        if(use.containsKey(cid))return true;
+        return false;
     }
 }

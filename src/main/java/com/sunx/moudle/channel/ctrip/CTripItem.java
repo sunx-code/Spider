@@ -12,6 +12,7 @@ import com.sunx.parser.Page;
 import com.sunx.utils.FileUtil;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.storage.DBFactory;
+import com.sunx.utils.Helper;
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.WebDriver;
 import org.slf4j.Logger;
@@ -43,21 +44,23 @@ public class CTripItem implements IParser {
             //请求任务
             pageDriver.navigate().to(task.getUrl());
             //休眠一定时间,等待页面渲染完毕
-            Wait.wait(pageDriver,3,2,() -> true);
+            Wait.wait(pageDriver,3,10,() -> true);
             //判断是否需要进行店家展开更多房型
             String source = pageDriver.getPageSource();
             if(source != null && source.contains("展开全部房型")){
                 source = source.replaceAll("unexpanded hidden","unexpanded");
             }
             //添加编码设定,让浏览器可以识别对应的编码
-            source = toHtml(source);
+            source = Helper.toHtml(source);
             //保存截图
             save(factory,task,source);
+            //浏览器渲染,需要休眠更多时间
+
             //关闭浏览器
             return Constant.TASK_SUCESS;
         }catch (Exception e){
             e.printStackTrace();
-            logger.error(e.getMessage());
+            logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
             return Constant.TASK_FAIL;
         }finally {
             WebDriverPool.me().recycle(pageDriver);
@@ -94,17 +97,6 @@ public class CTripItem implements IParser {
         resultEntity.setSleep(task.getSleep());
 
         factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
-    }
-
-    /**
-     *
-     * @param source
-     * @return
-     */
-    public String toHtml(String source){
-        Page page = Page.me().bind(source);
-        page.append("head","<meta http-equiv=Content-Type content=\"text/html;charset=utf-8\">");
-        return page.html();
     }
 
     /**
