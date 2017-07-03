@@ -146,7 +146,8 @@ public class Spider {
             taskEntity.setChannelId(cid);
 
             List<TaskEntity> tasks = factory.select(Constant.DEFAULT_DB_POOL,
-                    "select * from " + DBUtils.table(taskEntity) + " where date(createAt) = date(now()) and cid = " + cid,TaskEntity.class);
+                    "select * from " + DBUtils.table(taskEntity) + " where date(createAt) = date(now()) and cid = "
+                            + cid + " and status = " + taskEntity.getStatus(),TaskEntity.class);
             if(tasks == null){
                 logger.error("渠道" + cid + "数据拉去为空. 对应的缓存大小为:" + queue.get(cid).size());
                 return;

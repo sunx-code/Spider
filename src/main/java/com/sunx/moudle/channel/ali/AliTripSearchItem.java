@@ -74,9 +74,8 @@ public class AliTripSearchItem implements IParser {
             if(src == null || src.length() <= 0)return -1;
             if(src.contains("FAIL_SYS")){
                 logger.info(src);
-                h5_tk = "";
-                h5_tk_enc = "";
-                h5_tk_time = "";
+                //token已经失效,需要重新添加
+                clean();
                 return 0;
             }
             logger.info("下载数据完成,开始处理数据.....");
@@ -167,6 +166,8 @@ public class AliTripSearchItem implements IParser {
                 page = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(link), site);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
+                    //token已经失效,需要重新添加
+                    clean();
                     //说明数据失败,需要重新抓取
                     update(site);
                     index++;
@@ -207,6 +208,15 @@ public class AliTripSearchItem implements IParser {
         }
         //设置enc值
         this.h5_tk_enc = site.getCookie("_m_h5_tk_enc");
+    }
+
+    /**
+     * 清空数据内容
+     */
+    public void clean(){
+        h5_tk = "";
+        h5_tk_enc = "";
+        h5_tk_time = "";
     }
 
     /**

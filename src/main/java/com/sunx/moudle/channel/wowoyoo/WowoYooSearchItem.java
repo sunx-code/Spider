@@ -18,6 +18,8 @@ import com.sunx.storage.pool.DuridPool;
 import com.sunx.utils.FileUtil;
 import com.sunx.utils.Helper;
 import org.apache.commons.io.FileUtils;
+import org.jsoup.Connection;
+import org.jsoup.Jsoup;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,49 +71,50 @@ public class WowoYooSearchItem implements IParser {
 //        site.addHeader("user-agent","Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36");
 
         logger.info("开始访问地区首页:" + task.getRegion());
-//        int k = 0;
-//        String src = null;
-//        while(k < 3){
-//            int i=0;
-//            IProxy proxy = ProxyManager.me().poll();
-//            while(proxy == null){
-//                proxy = ProxyManager.me().poll();
-//                if(proxy == null){
-//                    i++;
-//                    //获取代理超过一定的次数,直接跳出
-//                    if(i >= 5)break;
-//                    try{
-//                        logger.info("获取代理失败,线程需要休眠1.5s后继续....");
-//                        Thread.sleep(1500);
-//                    }catch ( Exception e){
-//                        e.printStackTrace();
-//                    }
-//                    continue;
-//                }
-//                break;
-//            }
-//            if(proxy == null){
-//                proxy = new IProxy();
-//            }
-//            logger.info("获取代理完毕,开始进行下载...");
-//            //访问地点的首页数据
+        int k = 0;
+        String src = null;
+        while(k < 3){
+            int i=0;
+            IProxy proxy = ProxyManager.me().poll(2);
+            while(proxy == null){
+                proxy = ProxyManager.me().poll(2);
+                if(proxy == null){
+                    i++;
+                    //获取代理超过一定的次数,直接跳出
+                    if(i >= 5)break;
+                    try{
+                        logger.info("获取代理失败,线程需要休眠1.5s后继续....");
+                        Thread.sleep(1500);
+                    }catch ( Exception e){
+                        e.printStackTrace();
+                    }
+                    continue;
+                }
+                break;
+            }
+            if(proxy == null){
+                proxy = new IProxy();
+            }
+            logger.info("获取代理完毕,开始进行下载...");
+            //访问地点的首页数据
 //            src = downloader.downloader(request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),
 //                    site.setTimeOut(8000),
 //                    proxy.getHost(),
 //                    proxy.getPort());
-//            if(src == null || src.length() <= 0){
-//                logger.error("下载出现错误,需要重新下载,参数为 -> 地区：" + Helper.toJSON(map));
-////                task.getRegion() +",成人数:"
-////                        + task.getAdultNum() +",类型:"
-////                        + task.getPeopleType() + ",入住日期:" + task.getCheckInDate()
-//                k++;
-//                continue;
-//            }
-//            break;
-//        }
-        String src = Helper.downlaoder(task.getChannelId(),downloader,
-                                       request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),
-                                       site.setTimeOut(8000));
+            src = connect(task,proxy,map);
+            if(src == null || src.length() <= 0){
+                logger.error("下载出现错误,需要重新下载,参数为 -> 地区：" + Helper.toJSON(map));
+//                task.getRegion() +",成人数:"
+//                        + task.getAdultNum() +",类型:"
+//                        + task.getPeopleType() + ",入住日期:" + task.getCheckInDate()
+                k++;
+                continue;
+            }
+            break;
+        }
+//        String src = Helper.downlaoder(task.getChannelId(),downloader,
+//                                       request.setUrl(task.getUrl()).setMethod(Method.POST).setPostData(map),
+//                                       site.setTimeOut(8000));
         //对数据进行判定
         if(src == null || src.length() <= 0){
             logger.error("下载出现错误,地区：" + task.getRegion() +",成人数:" + task.getAdultNum() +",类型:" + task.getPeopleType() + ",入住日期:" + task.getCheckInDate());
@@ -119,6 +122,26 @@ public class WowoYooSearchItem implements IParser {
         }
         //找到相应的位置,进行填写数据后模拟点击
         return dealData(src,factory,task);
+    }
+
+    public String connect(TaskEntity task,IProxy proxy,Map<String,String> map){
+        try{
+            Connection connect = Jsoup.connect(task.getUrl());
+            connect.method(Connection.Method.POST);
+            connect.timeout(10000);
+            if(proxy != null && proxy.getHost() != null){
+                connect.proxy(proxy.getHost(),proxy.getPort());
+            }
+            connect.data(map);
+            connect.header("accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                    .header("accept-encoding","gzip, deflate, sdch, br")
+                    .header("Content-Type","application/x-www-form-urlencoded");
+            Connection.Response response = connect.execute();
+            return response.body();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
@@ -194,24 +217,39 @@ public class WowoYooSearchItem implements IParser {
 
     public static void main(String[] args){
         //初始化数据库连接池
-        DBConfig config = new DBConfig(Constant.DB_CONFIG_FILE);
-        DuridPool.me().build(config);
+//        DBConfig config = new DBConfig(Constant.DB_CONFIG_FILE);
+//        DuridPool.me().build(config);
+//
+//        DBFactory factory = DBFactory.me();
+//
+//        List<TaskEntity> task = factory.select("localhost","task",new String[]{"id"},new Object[]{7140},TaskEntity.class);
 
-        DBFactory factory = DBFactory.me();
+        TaskEntity taskEntity = new TaskEntity();
+        taskEntity.setId(123l);
+        taskEntity.setAdultNum(2);
+        taskEntity.setChildNum(0);
+        taskEntity.setChannelId(2);
+        taskEntity.setCheckInDate("2017-06-21");
+        taskEntity.setPeopleType("2成人");
+        taskEntity.setRegion("卡尼岛");
+        taskEntity.setSleep(2);
+        taskEntity.setUrl("https://wowoyoo.com/clubmed/cau");
 
-        List<TaskEntity> task = factory.select("localhost","task",new String[]{"id"},new Object[]{7140},TaskEntity.class);
+//        new WowoYooSearchItem().parser(factory,taskEntity);
 
-        TaskEntity taskEntity = task.get(0);
-//        taskEntity.setId(123l);
-//        taskEntity.setAdultNum(2);
-//        taskEntity.setChildNum(0);
-//        taskEntity.setChannelId(2);
-//        taskEntity.setCheckInDate("2017-06-21");
-//        taskEntity.setPeopleType("2成人");
-//        taskEntity.setRegion("卡尼岛");
-//        taskEntity.setSleep(2);
-//        taskEntity.setUrl("https://wowoyoo.com/clubmed/cau");
+        //第一步,拼接请求参数
+        Map<String,String> map = new HashMap<>();
+        map.put("area",taskEntity.getRegion());
+        map.put("day_num",taskEntity.getSleep() + "");
+        map.put("date",taskEntity.getCheckInDate());
+        map.put("adlut_num",taskEntity.getAdultNum() + "");
+        if(taskEntity.getChildNum() > 0){
+            map.put("kid_olds[0]",taskEntity.getBirthday());
+        }
 
-        new WowoYooSearchItem().parser(factory,taskEntity);
+        WowoYooSearchItem search = new WowoYooSearchItem();
+        String src = search.connect(taskEntity,new IProxy(null,-1),map);
+
+        System.out.println(search.all(src));
     }
 }

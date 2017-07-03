@@ -91,9 +91,6 @@ public class AliHotelsItem  implements IParser {
     public int parser(DBFactory factory,TaskEntity task) {
         //开始下载处理数据
         try{
-            h5_tk = "";
-            h5_tk_enc = "";
-            h5_tk_time = "" + System.currentTimeMillis();
             int cnt = toParse(factory,task);
             logger.info("开始更新数据状态...");
             if(cnt < 0){
@@ -124,9 +121,8 @@ public class AliHotelsItem  implements IParser {
             if(src == null || src.length() <= 0)return Constant.TASK_FAIL;
             if(src.contains("FAIL_SYS")){
                 logger.info("处理搜索数据错误 -> " + src);
-                h5_tk = "";
-                h5_tk_enc = "";
-                h5_tk_time = "";
+                //token已经失效,需要重新添加
+                clean();
                 return 0;
             }
             //获取到搜索数据以后,开始进行详情数据的获取
@@ -356,6 +352,8 @@ public class AliHotelsItem  implements IParser {
                 page = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(link), site);
                 if (page == null || page.length() <= 0) break;
                 if (page.contains("FAIL_SYS")) {
+                    //token已经失效,需要重新添加
+                    clean();
                     //说明数据失败,需要重新抓取
                     update(site);
                     index++;
@@ -420,6 +418,15 @@ public class AliHotelsItem  implements IParser {
     public String sign(String h5_tk,String time,String appkey,String data) throws Exception{
         String str = h5_tk + "&" + time + "&" + appkey + "&" + data;
         return MD5.convert(str);
+    }
+
+    /**
+     * 清空数据内容
+     */
+    public void clean(){
+        h5_tk = "";
+        h5_tk_enc = "";
+        h5_tk_time = "";
     }
 
     /**

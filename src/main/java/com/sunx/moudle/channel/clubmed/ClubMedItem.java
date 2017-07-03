@@ -7,20 +7,14 @@ import com.sunx.entity.TaskEntity;
 import com.sunx.moudle.annotation.Service;
 import com.sunx.moudle.channel.IParser;
 import com.sunx.moudle.channel.Wait;
-import com.sunx.moudle.dynamic.WebDriverPool;
+import com.sunx.moudle.dynamic.DriverManager;
 import com.sunx.moudle.enums.ImageType;
-import com.sunx.moudle.proxy.IProxy;
-import com.sunx.moudle.proxy.ProxyManager;
-import com.sunx.parser.Page;
 import com.sunx.utils.FileUtil;
 import com.sunx.common.encrypt.MD5;
 import com.sunx.storage.DBFactory;
 import com.sunx.utils.Helper;
 import org.apache.commons.io.FileUtils;
-import org.jsoup.Connection;
-import org.jsoup.Jsoup;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Cookie;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
@@ -68,7 +62,7 @@ public class ClubMedItem implements IParser {
         try{
             logger.info("开始请求数据:" + link);
             //获取浏览器对象
-            pageDriver = WebDriverPool.me().get();
+            pageDriver = DriverManager.me().get();
             //请求任务
             pageDriver.navigate().to(link);
             //休眠一定时间,等待页面渲染完毕
@@ -93,7 +87,7 @@ public class ClubMedItem implements IParser {
             logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
             return Constant.TASK_FAIL;
         }finally {
-            WebDriverPool.me().recycle(pageDriver);
+            DriverManager.me().recycle(pageDriver);
         }
     }
 
