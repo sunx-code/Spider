@@ -59,7 +59,7 @@ public class CTripItem implements IParser {
             return Constant.TASK_SUCESS;
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
             return Constant.TASK_FAIL;
         }finally {
             DriverManager.me().recycle(pageDriver);
@@ -104,12 +104,12 @@ public class CTripItem implements IParser {
      */
     public static void main(String[]args){
         TaskEntity taskEntity = new TaskEntity();
-        taskEntity.setId(123l);
+        taskEntity.setId(1l);
         taskEntity.setChannelName("携程");
-        taskEntity.setRegion("三亚");
-        taskEntity.setCheckInDate("2017-06-20");
-        taskEntity.setSleep(3);
-        taskEntity.setUrl("http://hotels.ctrip.com/hotel/4037056.html?startDate=2017-06-20&depDate=2017-06-23");
+        taskEntity.setRegion("Unknow");
+        taskEntity.setCheckInDate("2017-07-04");
+        taskEntity.setSleep(2);
+        taskEntity.setUrl("http://hotels.ctrip.com/hotel/4037056.html?startDate=2017-07-04&depDate=2017-07-06");
 
         CTripItem item = new CTripItem();
         item.parser(null,taskEntity);

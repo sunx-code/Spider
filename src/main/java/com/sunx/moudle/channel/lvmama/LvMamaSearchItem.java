@@ -37,7 +37,7 @@ import java.util.Map;
  *
  *
  */
-@Service(id = 10, service = "com.fosun.fonova.moudle.channel.lvmama.LvMamaSearchItem")
+@Service(id = 10, service = "com.sunx.moudle.channel.lvmama.LvMamaSearchItem")
 public class LvMamaSearchItem implements IParser {
     //日志记录
     private static final Logger logger = LoggerFactory.getLogger(LvMamaSearchItem.class);
@@ -75,7 +75,7 @@ public class LvMamaSearchItem implements IParser {
             return dealFreeData(factory,task);//表示自由行
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + "对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + "对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }

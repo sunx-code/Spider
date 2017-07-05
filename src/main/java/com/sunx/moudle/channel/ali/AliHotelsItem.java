@@ -137,7 +137,7 @@ public class AliHotelsItem  implements IParser {
             return dealData(factory,task,data,snapshot);
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }

@@ -9,7 +9,9 @@ import com.sunx.downloader.Site;
 import com.sunx.moudle.proxy.IProxy;
 import com.sunx.moudle.proxy.ProxyManager;
 import com.sunx.parser.Page;
+import com.sunx.storage.DBFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -162,6 +164,8 @@ public class Helper {
      */
     public static String downlaoder(long cid,Downloader downloader, Request request,Site site,boolean flag){
         String src = null;
+        //将每个渠道,下载的链接,使用的ip存储到数据库中
+        DBFactory factory = DBFactory.me();
         try{
             int j = 0;
             while(j <= 3){
@@ -202,12 +206,23 @@ public class Helper {
                         e.printStackTrace();
                     }
                 }
+                Map<String,Object> map = new HashMap<>();
+                map.put("cid",cid);
+                map.put("url",request.getUrl());
+                map.put("host",proxy.getHost());
+                map.put("port",proxy.getPort());
+
                 src = downloader.downloader(request,site,proxy.getHost(),proxy.getPort());
                 proxy.put(cid,System.currentTimeMillis());
                 if(src == null && flag){
                     proxy.setFlag(false);
+
+                    map.put("status",-1);
+                    factory.insert("localhost","t_proxy",map);
                     continue;
                 }
+                map.put("status",1);
+                factory.insert("localhost","t_proxy",map);
                 break;
             }
         }catch (Exception e){

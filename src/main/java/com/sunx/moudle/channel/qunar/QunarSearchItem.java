@@ -154,7 +154,10 @@ public class QunarSearchItem implements IParser {
 
                     //找到房型以后,开始处理对应房型下的价格问题
                     String price = Helper.downlaoder(task.getChannelId(),downloader,request.setUrl(PRICE_URL + "&" + task.getUrl() + "&room=" + name),site);
-                    if(price == null)continue;
+                    if(price == null){
+                        logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:下载到的网页源码为空..");
+                        continue;
+                    }
                     //开始处理这个价格对应的网页内容,格式化为json对象
                     JSONObject priceBean = JSON.parseObject(price);
                     if(!priceBean.containsKey("data"))continue;

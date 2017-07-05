@@ -20,7 +20,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class ProxyManager {
     //日志记录类
     private static final Logger logger = LoggerFactory.getLogger(ProxyManager.class);
-    private PriorityBlockingQueue<IProxy> queue = new PriorityBlockingQueue<>(50,new MySort());
+    private PriorityBlockingQueue<IProxy> queue = new PriorityBlockingQueue<>(100,new MySort());
     private int DEFAULT_PROXY_TASK_DURATION = 1000 * 5;
     private Downloader downloader = new HttpClientDownloader();
     private Request request = new Request();
@@ -29,9 +29,6 @@ public class ProxyManager {
     private static int PROXY_HAVING_TIME = 1000 * 30;
 
     private Lock lock = new ReentrantLock();
-
-    private Map<Long, PriorityBlockingQueue<IProxy>> proxys = new HashMap<>();
-    private AtomicInteger cnt = new AtomicInteger(0);
 
     /**
      */
@@ -66,22 +63,6 @@ public class ProxyManager {
             proxy.setCnt(proxy.getCnt() + 1);
             queue.offer(proxy);
             return proxy;
-//            if(!proxys.containsKey(cid))return null;
-//            PriorityBlockingQueue<IProxy> list = proxys.get(cid);
-//            IProxy proxy = list.poll();
-//            if(proxy == null || !proxy.isFlag()){
-//                cnt.getAndAdd(-1);
-//                return null;
-//            }
-//            //是否已经使用超过30秒
-//            long current = System.currentTimeMillis() - proxy.getCreateAt();
-//            if(current < PROXY_HAVING_TIME && proxy.getCnt() > 180){
-//                cnt.getAndAdd(-1);
-//                return null;
-//            }
-//            proxy.setCnt(proxy.getCnt() + 1);
-//            list.offer(proxy);
-//            return proxy;
         }catch (Exception e){
             e.printStackTrace();
         }finally {
@@ -115,30 +96,14 @@ public class ProxyManager {
                 proxy.setCreateAt(System.currentTimeMillis());
                 proxy.setFlag(true);
 
-                if(queue.size() < 30){
+                if(queue.size() < 100){
                     this.queue.offer(proxy);
                 }
-//                for(long i=1;i<=10;i++){
-//                    try{
-//                        lock.lock();
-//                        if(!proxys.containsKey(i)){
-//                            proxys.put(i,new PriorityBlockingQueue<>(100,new MySort()));
-//                        }
-//                        //将最新的ip放置在最开始的位置
-//                        proxys.get(i).offer(proxy);
-//                    }catch (Exception e){
-//                        e.printStackTrace();
-//                    }finally {
-//                        lock.unlock();
-//                    }
-//                }
-//                cnt.getAndAdd(1);
             }catch (Exception e){
                 e.printStackTrace();
             }
         }
         logger.info("当前代理队列的大小为：" + this.queue.size());
-//        logger.info("当前代理队列的大小为：" + cnt.get());
     }
 
     /**

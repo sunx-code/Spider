@@ -86,6 +86,7 @@ public class TuNiu implements IMonitor {
                         if(!isFilter(title))continue;
                         //获取href
                         String href = node.css(i,"a","href");
+
                         //开始封装任务对象
                         toTask(factory,id,name,days,sleep,href,tasks);
                     }
@@ -122,6 +123,8 @@ public class TuNiu implements IMonitor {
             taskEntity.setCheckOutDate(end);
 
             tasks.add(taskEntity);
+
+            logger.info(taskEntity.getUrl());
         }
 
         if (tasks.size() > 1000) {
@@ -154,6 +157,6 @@ public class TuNiu implements IMonitor {
         DuridPool.me().build(config);
 
         TuNiu tuNiu = new TuNiu();
-        tuNiu.monitor(DBFactory.me(),6l,"途牛");
+        tuNiu.monitor(null,6l,"途牛");
     }
 }

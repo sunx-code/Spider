@@ -98,7 +98,7 @@ public class AoYouSearchItem implements IParser {
             return toDetail(factory,task,page,pid,param,type);
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }

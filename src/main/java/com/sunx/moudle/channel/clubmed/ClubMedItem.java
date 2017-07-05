@@ -84,7 +84,7 @@ public class ClubMedItem implements IParser {
             return save(factory,task,(RemoteWebDriver) pageDriver);
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
             return Constant.TASK_FAIL;
         }finally {
             DriverManager.me().recycle(pageDriver);

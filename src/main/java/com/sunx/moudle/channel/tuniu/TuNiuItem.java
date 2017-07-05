@@ -249,7 +249,8 @@ public class TuNiuItem implements IParser {
                     //打印数据  那一天  那个店铺  店铺链接     房型   成人数   儿童数   酒店价格   卡券价格
                     logger.info(task.getCheckInDate() + "\t" + pro + "\t" + resName + "\t" + houseType + "\t" +  adultNum + "\t" + childNum + "\t" + price * roomNum + "\t" + tecPrice);
                 }catch (Exception e){
-                    e.printStackTrace();
+//                    e.printStackTrace();
+                    logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
                 }
             }
             StringBuffer buffer = new StringBuffer();
@@ -264,6 +265,7 @@ public class TuNiuItem implements IParser {
             return toTemplate(adultNum,childNum,task.getSleep(),hotel,hotelInfo,buffer,selectRoom);
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return null;
     }

@@ -67,7 +67,7 @@ public class CaiSaSearchItem implements IParser {
             return Constant.TASK_SUCESS;
         } catch (Exception e) {
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",对应的链接地址为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
@@ -114,10 +114,11 @@ public class CaiSaSearchItem implements IParser {
         CaiSaSearchItem search = new CaiSaSearchItem();
 
         TaskEntity taskEntity = new TaskEntity();
-        taskEntity.setUrl("http://dj.caissa.com.cn/reserve/reserve.php?pro_id=FIT0005576&pid=192901&nomal=2017-06&_type=&child=1&adults=2&childrens=1&ages=0-11&kc=999&presaleNum=&last_time=20170622&last_p=2&start_date=20170627");
-        taskEntity.setId(123l);
-        taskEntity.setCheckInDate("20170627");
-        taskEntity.setAdultNum(2);
+        taskEntity.setUrl("http://dj.caissa.com.cn/reserve/reserve.php?pro_id=FIT0004846&pid=192242&nomal=2017-07&_type=&child=1&adults=1&childrens=1&ages=0-11&kc=999&presaleNum=&last_time=20170719&last_p=2&start_date=20170722");
+        taskEntity.setId(1l);
+        taskEntity.setChannelId(4);
+        taskEntity.setCheckInDate("20170722");
+        taskEntity.setAdultNum(1);
         taskEntity.setChildNum(1);
         taskEntity.setRegion(Constant.DEFALUT_REGION);
         taskEntity.setPeopleType("2成人1儿童");

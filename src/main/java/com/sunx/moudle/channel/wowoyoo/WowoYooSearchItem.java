@@ -140,6 +140,7 @@ public class WowoYooSearchItem implements IParser {
             return response.body();
         }catch (Exception e){
             e.printStackTrace();
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return null;
     }
@@ -212,6 +213,7 @@ public class WowoYooSearchItem implements IParser {
             factory.insert(Constant.DEFAULT_DB_POOL, resultEntity);
         } catch (Exception e) {
             e.printStackTrace();
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
     }
 
@@ -239,17 +241,25 @@ public class WowoYooSearchItem implements IParser {
 
         //第一步,拼接请求参数
         Map<String,String> map = new HashMap<>();
-        map.put("area",taskEntity.getRegion());
-        map.put("day_num",taskEntity.getSleep() + "");
-        map.put("date",taskEntity.getCheckInDate());
-        map.put("adlut_num",taskEntity.getAdultNum() + "");
-        if(taskEntity.getChildNum() > 0){
-            map.put("kid_olds[0]",taskEntity.getBirthday());
+        map.put("area","卡尼岛");
+        map.put("day_num","4");
+        map.put("date","2017-07-04");
+        map.put("adlut_num","2");
+        if(1 > 0){//儿童数为：1
+            map.put("kid_olds[0]","2007-07-03");
         }
 
         WowoYooSearchItem search = new WowoYooSearchItem();
-        String src = search.connect(taskEntity,new IProxy(null,-1),map);
 
+        Site site = new Site();
+        site.addHeader("accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        site.addHeader("accept-encoding","gzip, deflate, sdch, br");
+        site.addHeader("Content-Type","application/x-www-form-urlencoded");
+
+        Downloader downloader = new HttpClientDownloader();
+        String src = downloader.downloader(new Request("https://wowoyoo.com/clubmed/cau")
+                                                      .setMethod(Method.POST).setPostData(map),
+                                           site.setTimeOut(1000 * 10));
         System.out.println(search.all(src));
     }
 }

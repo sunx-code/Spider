@@ -25,7 +25,7 @@ import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-@Service(id = 7, service = "com.fosun.fonova.moudle.channel.ali.AliTripSearch")
+@Service(id = 7, service = "com.sunx.moudle.channel.ali.AliTripSearch")
 public class AliTripSearchItem implements IParser {
     //日志记录类
     private static final Logger logger = LoggerFactory.getLogger(AliTripSearchItem.class);
@@ -72,7 +72,7 @@ public class AliTripSearchItem implements IParser {
             //获取下载的网页内容
             String src = getSrc(task);
             if(src == null || src.length() <= 0)return -1;
-            if(src.contains("FAIL_SYS")){
+            if(src.contains("FAIL_SYS") || src.contains("login.m.taobao.com/login.htm")){
                 logger.info(src);
                 //token已经失效,需要重新添加
                 clean();
@@ -87,7 +87,7 @@ public class AliTripSearchItem implements IParser {
             return toSnapshot(factory,task,data,id);
         }catch (Exception e){
             e.printStackTrace();
-            logger.error("任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
+            logger.error("渠道id:" + task.getChannelId() + ",任务id:" + task.getId() + ",任务链接为:" + task.getUrl() + ",错误信息为:" + e.getMessage());
         }
         return Constant.TASK_FAIL;
     }
